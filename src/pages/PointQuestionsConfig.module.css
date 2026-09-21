@@ -1,0 +1,467 @@
+/* ── View-mode toolbar ───────────────────────────────────────────────────── */
+
+.configureBtn {
+  margin-left: auto;
+  align-self: center;
+  background: #3b6fe0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.configureBtn:hover { background: #2a5cc9; }
+
+.emptyConfigureBtn {
+  background: none;
+  border: none;
+  color: #3b6fe0;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+.emptyConfigureBtn:hover { text-decoration: underline; }
+
+/* ── Edit-mode header ────────────────────────────────────────────────────── */
+
+.editHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.editSubhead {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #888;
+}
+
+.editActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.cancelBtn {
+  background: #f3f4f6;
+  color: #555;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.cancelBtn:hover:not(:disabled) { background: #e5e7eb; }
+.cancelBtn:disabled { opacity: 0.6; cursor: default; }
+
+.saveBtn {
+  background: #1a8a3f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 22px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.saveBtn:hover:not(:disabled) { background: #166032; }
+.saveBtn:disabled { opacity: 0.6; cursor: default; }
+
+/* ── Error banner ────────────────────────────────────────────────────────── */
+
+.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 6px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+/* ── Slot list ───────────────────────────────────────────────────────────── */
+
+.slotList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ── Individual slot card ────────────────────────────────────────────────── */
+
+.slotCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.slotHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.slotSeq {
+  width: 28px;
+  height: 28px;
+  background: #1a2332;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.slotPicker {
+  flex: 1;
+  min-width: 200px;
+}
+
+.slotType {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #555;
+  border-radius: 4px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reqLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: #555;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.removeBtn {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  margin-left: auto;
+}
+.removeBtn:hover:not(:disabled) { background: #fee2e2; border-color: #f87171; }
+.removeBtn:disabled {
+  opacity: 0.25;
+  cursor: default;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #aaa;
+}
+
+/* ── Question picker (filter input + select) ─────────────────────────────── */
+
+.qPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qFilter {
+  padding: 5px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  background: #fafafa;
+  color: #555;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.qFilter:focus { border-color: #3b6fe0; background: #fff; }
+
+.qSelect {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  background: #fff;
+  color: #1a2332;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+.qSelect:focus { border-color: #3b6fe0; }
+
+/* ── Jump configuration section ──────────────────────────────────────────── */
+
+.jumpSection {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f1f3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jumpSectionLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.jumpRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jumpAnswerLabel {
+  min-width: 110px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #444;
+  flex-shrink: 0;
+}
+
+.jumpSelect {
+  flex: 1;
+  max-width: 380px;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #fff;
+  color: #1a2332;
+  outline: none;
+}
+.jumpSelect:focus { border-color: #3b6fe0; }
+
+/* ── No-jump message ─────────────────────────────────────────────────────── */
+
+.noJumps {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f1f3;
+  font-size: 0.8rem;
+  color: #bbb;
+  font-style: italic;
+}
+
+/* (Add-slot button removed — all 10 slots are shown at once, VB6-style) */
+
+/* ── Auto-expanded clone-jump destination section ────────────────────────── */
+
+.expandedSection {
+  margin-top: 24px;
+  border: 1px solid #c7d7f9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.expandedSectionTitle {
+  background: #e8effe;
+  color: #1a2332;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-bottom: 1px solid #c7d7f9;
+  letter-spacing: 0.02em;
+}
+
+/* ── Question grid (table inside expanded section) ───────────────────────── */
+
+.qGrid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  background: #fff;
+}
+
+.qGrid thead tr {
+  background: #f5f7ff;
+}
+
+.qGrid th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.qGrid td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1a2332;
+  vertical-align: middle;
+}
+
+.qGrid tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.qGrid tbody tr:hover td {
+  background: #f8faff;
+}
+
+/* Column width hints */
+.qgSeq     { width: 46px; text-align: center; }
+.qgQuestion { min-width: 180px; }
+.qgType    { width: 130px; white-space: nowrap; }
+.qgReq     { width: 40px; text-align: center; color: #1a8a3f; font-weight: 700; }
+.qgJump    { width: 120px; font-size: 0.8rem; }
+
+/* ── Jump block: wraps a jump row + its expanded questions panel ─────────── */
+
+.jumpBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Select button (VB6-style "Select" next to point-code jumps) ─────────── */
+
+.selectWrap {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.selectBtn {
+  background: #f0f4ff;
+  color: #3b6fe0;
+  border: 1px solid #c7d7f9;
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+  flex-shrink: 0;
+}
+.selectBtn:hover { background: #dde8ff; border-color: #3b6fe0; }
+
+/* ── Expanded point questions panel ─────────────────────────────────────── */
+
+.expandedBox {
+  margin-top: 8px;
+  margin-left: 122px;   /* align under jump select, past the answer label */
+  background: #f8faff;
+  border: 1px solid #c7d7f9;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+}
+
+.expandedTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #3b6fe0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.expandedLoading {
+  font-size: 0.82rem;
+  color: #888;
+}
+
+.expandedList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.expandedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.expandedSeq {
+  width: 22px;
+  height: 22px;
+  background: #1a2332;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.expandedDesc {
+  flex: 1;
+  color: #1a2332;
+  font-weight: 500;
+}
+
+.expandedType {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #3b6fe0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.expandedReq {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.expandedEmpty {
+  font-size: 0.82rem;
+  color: #aaa;
+  font-style: italic;
+}

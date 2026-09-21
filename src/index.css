@@ -1,0 +1,25 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  color: #1a2332;
+  background: #f4f6f9;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App-wide: display all free-typed text as caps. Deliberately excludes
+   password (case-sensitive credential -- uppercasing it would break login),
+   email/url (case-sensitive semantics), and non-text input types (number,
+   date, color, file, checkbox, radio, range, hidden) where transform is
+   either meaningless or actively wrong. This is display-only (CSS
+   text-transform) -- the underlying value submitted/stored is unaffected. */
+input:not([type='password']):not([type='email']):not([type='url']):not([type='number']):not([type='date']):not([type='time']):not([type='datetime-local']):not([type='month']):not([type='week']):not([type='color']):not([type='file']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']),
+textarea {
+  text-transform: uppercase;
+}
