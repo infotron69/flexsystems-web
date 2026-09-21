@@ -1,0 +1,225 @@
+.page { padding: 24px 32px; }
+
+.header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+
+.backBtn {
+  padding: 5px 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #444;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.backBtn:hover { background: #f3f4f6; }
+
+.heading {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.subheading { margin: 0 0 16px; font-size: 0.82rem; color: #667; max-width: 70ch; }
+
+.loading { color: #888; padding: 32px 0; }
+
+/* ── Shell: SOP list (left) + detail (right) ── */
+.shell {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 0;
+  border: 1px solid #c5c8ce;
+  border-radius: 4px;
+  background: #c5c8ce;
+  min-height: 520px;
+}
+
+/* ── SOP list panel ── */
+.list {
+  background: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #c5c8ce;
+}
+
+.listHeader {
+  padding: 6px;
+  background: #dde3ec;
+  border-bottom: 1px solid #c5c8ce;
+}
+
+.filterInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 0.82rem;
+}
+
+.listBox {
+  flex: 1;
+  overflow-y: auto;
+  background: #fff;
+  min-height: 200px;
+  max-height: 520px;
+}
+
+.listItem {
+  padding: 7px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.listItem:hover { background: #dce8ff; }
+.listItem.selected { background: #1a5ccc; color: #fff; }
+.listItem.selected .sopCode { color: #c8d8ff; }
+
+.sopDesc { font-size: 0.84rem; font-weight: 500; }
+.sopCode { font-size: 0.7rem; font-family: monospace; color: #888; }
+
+.newBtn {
+  margin: 8px;
+  padding: 5px 10px;
+  background: #3b6fe0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.newBtn:hover { background: #2a5bcb; }
+
+.empty {
+  padding: 10px;
+  font-size: 0.78rem;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* ── Detail panel ── */
+.detail {
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.noSelection {
+  padding: 32px;
+  color: #666;
+  font-size: 0.88rem;
+}
+
+.form {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.formLabel {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.formInput {
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 0.86rem;
+  font-family: monospace;
+  width: 220px;
+}
+.formInput:focus { outline: 2px solid #3b6fe0; border-color: transparent; }
+.formInput:disabled { background: #eee; color: #667; }
+
+.formInputWide {
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.formInputWide:focus { outline: 2px solid #3b6fe0; border-color: transparent; }
+
+.foundInBox {
+  padding: 6px 9px;
+  background: #eef1f7;
+  border: 1px solid #dde3ec;
+  border-radius: 3px;
+  font-size: 0.84rem;
+  color: #334;
+}
+.foundInNone { color: #999; font-style: italic; }
+
+.formErr {
+  color: #b91c1c;
+  font-size: 0.78rem;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.saveBtn {
+  background: #3b6fe0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.saveBtn:hover:not(:disabled) { background: #2a5bcb; }
+.saveBtn:disabled { opacity: 0.6; cursor: default; }
+
+.questionsBtn {
+  background: none;
+  border: 1px solid #3b6fe0;
+  color: #3b6fe0;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.questionsBtn:hover { background: #eef2fc; }
+
+.deleteBtn {
+  background: none;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.deleteBtn:hover { background: #fef2f2; }
+
+.cancelBtn {
+  background: none;
+  border: 1px solid #ccc;
+  color: #555;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.cancelBtn:hover { background: #f3f4f6; }

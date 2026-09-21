@@ -1,0 +1,312 @@
+.page {
+  padding: 32px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #1a2332;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sortRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sortLabel {
+  font-size: 0.82rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.sortSelect {
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.viewOnlyBadge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 2px 9px;
+}
+
+.count {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.loading {
+  color: #888;
+  padding: 32px 0;
+}
+
+.empty {
+  color: #999;
+  padding: 32px 0;
+  font-size: 0.9rem;
+}
+
+/* ---- Card grid (Sites, Routes) ---- */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.12s, border-color 0.12s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(59,111,224,0.15);
+  border-color: #3b6fe0;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.cardSub {
+  font-size: 0.78rem;
+  color: #888;
+  font-family: monospace;
+}
+
+.cardMeta {
+  font-size: 0.82rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+.cardArrow {
+  margin-top: 12px;
+  font-size: 0.82rem;
+  color: #3b6fe0;
+  font-weight: 600;
+}
+
+/* ---- Row list (Points) ---- */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 0.12s, border-color 0.12s;
+  width: 100%;
+}
+
+.row:hover {
+  box-shadow: 0 2px 8px rgba(59,111,224,0.12);
+  border-color: #3b6fe0;
+}
+
+.rowNum {
+  width: 28px;
+  height: 28px;
+  background: #f0f4ff;
+  color: #3b6fe0;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a2332;
+}
+
+.rowSub {
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+.rowArrow {
+  font-size: 0.82rem;
+  color: #3b6fe0;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- Shared badge ---- */
+.badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #3b6fe0;
+  border-radius: 4px;
+  padding: 2px 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* ---- Question cards ---- */
+.qList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.qHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.qSeq {
+  width: 28px;
+  height: 28px;
+  background: #1a2332;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qDesc {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a2332;
+}
+
+.qType {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #555;
+  border-radius: 4px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.required {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.qMeta {
+  font-size: 0.8rem;
+  color: #777;
+  margin-top: 8px;
+  margin-left: 40px;
+}
+
+.jumpTable {
+  margin-top: 10px;
+  margin-left: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jumpRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+}
+
+.jumpOption {
+  min-width: 160px;
+  color: #333;
+  font-weight: 500;
+}
+
+.jumpDest {
+  color: #3b6fe0;
+  font-weight: 600;
+}
+
+.jumpExit {
+  color: #888;
+  font-weight: 400;
+}
+
+.jumpLink {
+  color: #3b6fe0;
+  font-weight: 600;
+  text-decoration: none;
+}
+.jumpLink:hover {
+  text-decoration: underline;
+}
+
+.jumpExitRoute {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.jumpIncident {
+  color: #ea580c;
+  font-weight: 600;
+}

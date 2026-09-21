@@ -1,0 +1,27 @@
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.toolBtn {
+  background: #eef1f7;
+  border: 1px solid #ccd2dc;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  color: #334;
+}
+.toolBtn:hover { background: #dde3ec; }
+
+/* Full-width measuring frame -- applyFit() reads this element's clientWidth
+   as the available space to scale the (possibly much larger) diagram into,
+   so it must never itself be resized to the diagram's size. */
+.stage {
+  width: 100%;
+}
+
+.actual {
+  overflow: auto;
+}

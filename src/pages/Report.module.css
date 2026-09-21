@@ -1,0 +1,624 @@
+.page {
+  padding: 24px 32px;
+  background: #fff;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.headingBlock { display: flex; flex-direction: column; gap: 2px; }
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reportLogo {
+  height: 36px;
+  width: auto;
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.reportFooter {
+  margin-top: 32px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e8ee;
+  font-size: 0.72rem;
+  color: #999;
+  text-align: center;
+}
+
+.subheading {
+  font-size: 0.82rem;
+  color: #667;
+}
+
+.meta {
+  font-size: 0.76rem;
+  color: #999;
+  margin-bottom: 18px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.printBtn {
+  padding: 6px 16px;
+  background: #3b6fe0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.printBtn:hover { background: #2a5bcb; }
+
+.exportBtn {
+  padding: 6px 16px;
+  background: #fff;
+  color: #1a7a3a;
+  border: 1px solid #1a7a3a;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.exportBtn:hover { background: #eafbf0; }
+
+.backBtn {
+  padding: 6px 14px;
+  background: none;
+  border: 1px solid #ccc;
+  color: #444;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.backBtn:hover { background: #f3f4f6; }
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #444;
+  cursor: pointer;
+}
+
+.loading { color: #888; padding: 32px 0; }
+
+.section {
+  margin-bottom: 28px;
+  break-inside: avoid;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a2332;
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #1a2332;
+}
+
+.subTitle {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334;
+  margin: 14px 0 6px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 5px 8px;
+  background: #eef1f7;
+  border: 1px solid #d5d9e0;
+  font-weight: 600;
+  color: #334;
+}
+
+.sortHeader {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.sortHeader:hover { background: #dde3ec; }
+.sortArrow { margin-left: 4px; color: #3b6fe0; }
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  background: #f5f7fb;
+  border: 1px solid #e0e4ea;
+  border-radius: 6px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filterLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #667;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.filterSelect, .filterInput {
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  min-width: 140px;
+}
+
+.filterBtn {
+  padding: 6px 14px;
+  background: #3b6fe0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-end;
+}
+.filterBtn:hover { background: #2a5bcb; }
+
+.clearBtn {
+  padding: 6px 12px;
+  background: none;
+  border: 1px solid #ccc;
+  color: #555;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  align-self: flex-end;
+}
+.clearBtn:hover { background: #eee; }
+
+.table td {
+  padding: 4px 8px;
+  border: 1px solid #e5e8ee;
+  color: #222;
+  vertical-align: top;
+}
+
+.table tbody tr:nth-child(even) td { background: #fafbfc; }
+
+/* Customer -> Site -> Route grouping bands (Patrol Report) */
+.groupHeaderCustomer td {
+  background: #1a2332 !important;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 7px 10px;
+  border-color: #1a2332;
+}
+.groupHeaderSite td {
+  background: #3b6fe0 !important;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.84rem;
+  padding: 6px 10px 6px 22px;
+  border-color: #3b6fe0;
+}
+.groupHeaderRoute td {
+  background: #dde3f5 !important;
+  color: #1a2332;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 5px 10px 5px 34px;
+  border-color: #c7d1ee;
+}
+
+.routeNameBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.routeNameBtn:hover { color: #3b6fe0; }
+
+/* Per-route extra content injected below a route header (Dashboard's
+   per-route Performance Metrics panel) — reset the cell so the panel
+   controls its own spacing instead of inheriting table cell padding. */
+.routeExtraCell {
+  padding: 10px 10px 10px 34px !important;
+  background: #fff !important;
+  border-color: #d5d9e0;
+}
+
+/* Embedded question/answer detail row under a transaction (Patrol Report) */
+.detailRow td {
+  background: #f5f7fb !important;
+  padding: 4px 8px 6px 24px;
+  border-top: none;
+}
+.qaList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.76rem;
+  color: #445;
+}
+.qaLabel { font-weight: 600; color: #334; }
+
+.qaException { color: #b91c1c; font-weight: 600; }
+.qaException .qaLabel { color: #b91c1c; }
+
+.notesWithPhoto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notesPhoto {
+  max-height: 60px;
+  max-width: 90px;
+  border-radius: 4px;
+  border: 1px solid #d5d9e0;
+  object-fit: cover;
+}
+
+/* GPS pin link(s) in place of raw "[GPS:lat,lon]" text (Patrol Report) */
+.gpsPinRow {
+  display: flex;
+  gap: 6px;
+}
+.gpsPin {
+  color: #3b6fe0;
+  display: inline-flex;
+  align-items: center;
+}
+.gpsPin:hover { color: #2a5bcb; }
+
+/* Patrol Report: smaller, fixed-width table so Date/Time never wrap and the
+   Notes column stays narrow now that photos/GPS render as compact icons. */
+.patrolTable {
+  table-layout: fixed;
+  font-size: 8pt;
+}
+.patrolTable td, .patrolTable th {
+  word-wrap: break-word;
+}
+.nowrapCell {
+  white-space: nowrap;
+}
+
+.countBadge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #556;
+  background: #eef1f7;
+  border-radius: 3px;
+  padding: 1px 8px;
+  margin-left: 8px;
+}
+
+.mono { font-family: monospace; font-size: 0.78rem; white-space: nowrap; }
+
+.unusedBadge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #f87171;
+  border-radius: 3px;
+  padding: 1px 8px;
+}
+
+.inUseBadge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 3px;
+  padding: 1px 8px;
+}
+
+.unusedMeta { color: #b91c1c; }
+
+.sopCategoryInput {
+  width: 100%;
+  min-width: 90px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  background: transparent;
+}
+.sopCategoryInput:hover { border-color: #d5d9e0; }
+.sopCategoryInput:focus { border-color: #3b6fe0; background: #fff; outline: none; }
+
+.sopHiddenRow { opacity: 0.55; }
+.sopHiddenRow:hover { opacity: 0.85; }
+
+.sopQuestionList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.78rem;
+  color: #334;
+}
+.sopQuestionList li { margin-bottom: 4px; }
+
+.sopBranchList {
+  margin: 2px 0 0;
+  padding-left: 16px;
+  list-style: none;
+  font-size: 0.72rem;
+  color: #556;
+  font-weight: 400;
+}
+.sopBranchList li::before { content: '↳ '; color: #99a; }
+
+.flowChartBtn {
+  display: inline-block;
+  margin-bottom: 6px;
+  margin-left: 6px;
+  padding: 2px 9px;
+  background: #eef2fc;
+  border: 1px solid #c7d1ee;
+  color: #1a5ccc;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.flowChartBtn:hover { background: #dce8ff; }
+
+.expandToggleBtn {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 9px;
+  background: #f0f2f5;
+  border: 1px solid #d5d9e0;
+  color: #334;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.expandToggleBtn:hover { background: #e5e8ee; }
+
+.legendNote {
+  font-weight: 400;
+  font-size: 0.68rem;
+  color: #778;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.empty {
+  color: #999;
+  font-size: 0.82rem;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.statCard {
+  border: 1px solid #d5d9e0;
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.statLabel {
+  font-size: 0.74rem;
+  color: #667;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Performance Metrics report */
+.perfCustomerHeader {
+  background: #1a2332;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 7px 10px;
+  border-radius: 4px;
+  margin: 18px 0 8px;
+}
+.perfSiteHeader {
+  background: #3b6fe0;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.84rem;
+  padding: 6px 10px 6px 22px;
+  border-radius: 4px;
+  margin: 0 0 10px;
+}
+.perfSiteEmpty {
+  font-size: 0.8rem;
+  color: #888;
+  padding: 4px 4px 16px;
+}
+.perfCard {
+  border: 1px solid #d5d9e0;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.perfRouteTitle {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1a2332;
+  margin: 0 0 10px;
+}
+.perfDetailToggle {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid #c7cfe0;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #3b6fe0;
+  cursor: pointer;
+}
+.perfDetailToggle:hover { background: #eef1f7; }
+.perfTxnHeadingRow {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #eef0f4;
+}
+.perfNoTxns {
+  font-size: 0.8rem;
+  color: #888;
+  padding: 6px 0;
+}
+.perfTxnTableWrap {
+  margin-top: 8px;
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #eef0f4;
+  border-radius: 4px;
+}
+.perfTxnTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.perfTxnTable th {
+  position: sticky;
+  top: 0;
+  background: #eef1f7;
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #445;
+  border-bottom: 1px solid #dde3ec;
+}
+.perfTxnTable td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0f2f5;
+  color: #333;
+}
+.perfTxnTable tbody tr:hover td { background: #f6f8ff; }
+.perfTxnFail td { color: #b91c1c; }
+.perfStatsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+.perfStatCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+.perfStatLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: #334;
+}
+.perfStatLine span:first-child { color: #556; }
+.perfStatLine span:last-child { font-weight: 700; color: #1a2332; }
+.perfChartRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.perfLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #334;
+}
+.perfLegendItem { display: flex; align-items: center; gap: 8px; }
+.perfLegendSwatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.perfLegendTotal {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #e0e4ea;
+  font-weight: 700;
+}
+
+@media print {
+  .page { padding: 0; }
+  .headerActions { display: none; }
+  .toggle { display: none; }
+  .filterBar { display: none; }
+  .sortArrow { display: none; }
+  .flowChartBtn { display: none; }
+  .expandToggleBtn { display: none; }
+  .section { page-break-inside: avoid; }
+  /* Point-barcode sheets can run to dozens of rows per site - forcing the
+     whole section to avoid a break just strands it at the top of the next
+     page, leaving the previous page mostly blank. Let it flow instead, and
+     protect only the row (so a barcode/QR pair never splits across pages). */
+  .allowPageBreak .section { page-break-inside: auto; }
+  .allowPageBreak .table tr { page-break-inside: avoid; }
+  .table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .table tbody tr:nth-child(even) td { background: #f7f7f7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Wide reports (Patrol Report, Last PDA Download) opt into a named
+     landscape page via .printLandscape on their outer .page div, so other
+     reports sharing this stylesheet keep printing portrait. */
+  @page printLandscapePage {
+    size: landscape;
+  }
+  .printLandscape {
+    page: printLandscapePage;
+  }
+}

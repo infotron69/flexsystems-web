@@ -1,0 +1,201 @@
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: #1a2332;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.brand {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+
+.brandLogo {
+  width: 140px;
+  height: auto;
+  display: block;
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  gap: 2px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  transition: background 0.12s, color 0.12s;
+}
+
+.link:hover {
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+}
+
+.active {
+  background: rgba(59,111,224,0.25);
+  color: #fff;
+  border-left-color: #3b6fe0;
+}
+
+.icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.whoami {
+  margin: 16px 16px 0;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding-top: 14px;
+}
+.whoamiUser {
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.whoamiMeta {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.logout {
+  margin: 16px;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.6);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.12s, color 0.12s;
+}
+
+.logout:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.copyright {
+  text-align: center;
+  padding: 0 16px 16px;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.35);
+}
+
+.buildVersion {
+  text-align: center;
+  padding: 0 16px 4px;
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: rgba(255,255,255,0.25);
+}
+
+.screenRef {
+  text-align: center;
+  padding: 0 16px 10px;
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: rgba(255,255,255,0.25);
+  word-break: break-all;
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  background: #f4f6f9;
+}
+
+.pdaOffer {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: #fef3c7;
+  border-bottom: 1px solid #fbbf24;
+  font-size: 0.86rem;
+  color: #78350f;
+}
+
+.pdaOfferText {
+  font-weight: 500;
+}
+
+.pdaOfferActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pdaOfferBtn {
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pdaOfferBtn:hover:not(:disabled) { background: #b45309; }
+.pdaOfferBtn:disabled { opacity: 0.6; cursor: default; }
+
+.pdaOfferLink {
+  background: none;
+  border: none;
+  color: #78350f;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pdaOfferDismiss {
+  background: none;
+  border: 1px solid rgba(120,53,15,0.3);
+  border-radius: 4px;
+  color: #78350f;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.pdaOfferDismiss:hover { background: rgba(120,53,15,0.08); }
+
+@media print {
+  .sidebar { display: none; }
+  .shell { height: auto; overflow: visible; display: block; }
+  .main { overflow: visible; background: #fff; }
+  .pdaOffer { display: none; }
+}
