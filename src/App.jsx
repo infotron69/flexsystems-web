@@ -34,6 +34,7 @@ import PerformanceMetricsReport from './pages/PerformanceMetricsReport';
 import AdminTenants         from './pages/AdminTenants';
 import AuditLog             from './pages/AuditLog';
 import IntegrationApiTester from './pages/IntegrationApiTester';
+import Signup, { SignupResult } from './pages/Signup';
 
 function RequireAuth({ children }) {
   if (localStorage.getItem('token')) return children;
@@ -47,6 +48,11 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/login/:tenant" element={<Login />} />
+
+        {/* ── Public self-serve sign-up (Stripe Checkout) ── */}
+        <Route path="/signup"           element={<Signup />} />
+        <Route path="/signup/success"   element={<SignupResult ok />} />
+        <Route path="/signup/cancelled" element={<SignupResult ok={false} />} />
         <Route
           path="/"
           element={

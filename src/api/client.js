@@ -269,3 +269,11 @@ export const createIntegrationApiKey = (tenantId, label) =>
   client.post('/integration-api-keys', null, { params: { tenant_id: tenantId, label } }).then(r => r.data);
 export const revokeIntegrationApiKey = (keyId) =>
   client.delete(`/integration-api-keys/${keyId}`).then(r => r.data);
+
+// ---------------------------------------------------------------------------
+// Billing (public self-serve sign-up — see app/routers/billing.py). Uses
+// rawClient: the sign-up page has no session, so a stray 401 must not bounce
+// a prospective customer to the login screen.
+// ---------------------------------------------------------------------------
+export const createCheckoutSession = (body) =>
+  rawClient.post('/billing/checkout-session', body).then(r => r.data);
