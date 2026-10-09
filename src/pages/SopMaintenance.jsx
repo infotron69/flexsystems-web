@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import {
   getRoutePoints, addPointToRoute, removePointFromRoute,
-  createPoint, updatePoint, deletePoint, sopLookup,
+  createPoint, updatePoint, deletePoint, sopLookup, nextSopCode,
 } from '../api/client';
 import { markPdaFilesDirty } from '../pdaDirty';
 import styles from './SopMaintenance.module.css';
@@ -20,6 +21,8 @@ const emptyForm = { code: '', description: '' };
 
 export default function SopMaintenance() {
   const navigate = useNavigate();
+  const listBoxRef = useRef(null);
+  useScrollRestoration(listBoxRef);
 
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +33,24 @@ export default function SopMaintenance() {
   const [isNew, setIsNew]     = useState(false);
   const [saving, setSaving]   = useState(false);
   const [err, setErr]         = useState(null);
+  const [codeEdited, setCodeEdited] = useState(false);
 
   const [foundIn, setFoundIn]     = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
+
+  // Auto-suggests a code as the description is typed for a brand-new SOP
+  // (same debounced-preview pattern as Incidents.jsx's incident-code
+  // suggest) -- editable, and stops auto-updating the moment the admin
+  // types into the code field themselves so their edit is never clobbered.
+  useEffect(() => {
+    if (!isNew || codeEdited) return;
+    const description = form.description.trim();
+    const handle = setTimeout(() => {
+      if (!description) { updateField('code', ''); return; }
+      nextSopCode(description).then(code => updateField('code', code)).catch(() => {});
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [form.description, isNew, codeEdited]);
 
   function load() {
     setLoading(true);
@@ -72,6 +90,7 @@ export default function SopMaintenance() {
     setForm(emptyForm);
     setErr(null);
     setFoundIn(null);
+    setCodeEdited(false);
   }
 
   function updateField(key, value) {
@@ -155,7 +174,7 @@ export default function SopMaintenance() {
               placeholder="Filter SOPs…"
             />
           </div>
-          <div className={styles.listBox}>
+          <div className={styles.listBox} ref={listBoxRef}>
             {filtered.map(rp => (
               <div
                 key={rp.point.point_code}
@@ -180,9 +199,9 @@ export default function SopMaintenance() {
                 <input
                   className={styles.formInput}
                   value={form.code}
-                  onChange={e => updateField('code', e.target.value.toUpperCase())}
+                  onChange={e => { setCodeEdited(true); updateField('code', e.target.value.toUpperCase()); }}
                   disabled={!isNew}
-                  placeholder="e.g. C000000123"
+                  placeholder="auto-generated from description"
                   maxLength={10}
                 />
               </div>

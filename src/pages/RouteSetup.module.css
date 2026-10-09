@@ -206,6 +206,13 @@
   margin-top: 2px;
 }
 
+.formHint {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  color: #666;
+  line-height: 1.4;
+}
+
 .formActions {
   display: flex;
   gap: 8px;
@@ -379,6 +386,18 @@
   font-weight: 700;
 }
 .listItem.selected .qBadge { background: rgba(255,255,255,0.25); color: #fff; }
+
+.oosCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #92400e;
+  cursor: pointer;
+  user-select: none;
+}
+.listItem.selected .oosCheckLabel { color: #fde68a; }
 
 /* Transfer buttons column */
 .transferBtns {

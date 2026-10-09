@@ -1,19 +1,29 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import {
   getCustomers, getSites, getRoutes, getRoutePoints, getRoutePointQuestionCounts,
-  importPoints, getPoints, getPoint, updatePoint,
+  importPoints, getPoints, getPoint, createPoint, updatePoint, nextPointCode,
 } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
 import { markPdaFilesDirty } from '../pdaDirty';
 import styles from './Questions.module.css';
 
 const emptyEditForm = {
+  pointCode: '',
   description: '', location: '', category: '', subCategory: '',
   notes1: '', notes2: '', notes3: '', notes4: '', notes5: '',
 };
 
+// Marker used in place of a real point_code while editingCode holds the
+// "add a new point" form -- distinguishes it from editing an existing point
+// (whose code is a real, already-created Point_ID) without a separate set
+// of add/edit state and JSX to keep in sync.
+const NEW_POINT = '__new__';
+
 export default function ImportPoints() {
   const { canEdit } = useCanEditSite();
+  const listBoxRef = useRef(null);
+  useScrollRestoration(listBoxRef);
 
   const [customers, setCustomers] = useState([]);
   const [sites, setSites]         = useState([]);
@@ -87,6 +97,7 @@ export default function ImportPoints() {
     setEditLoading(true);
     getPoint(pointId)
       .then(p => setEditForm({
+        pointCode:   p.point_code ?? '',
         description: p.description ?? '',
         location:    p.location ?? '',
         category:    p.category ?? '',
@@ -99,6 +110,20 @@ export default function ImportPoints() {
       }))
       .catch(() => setEditErr('Failed to load point'))
       .finally(() => setEditLoading(false));
+  }
+
+  function startAddPoint() {
+    setEditingCode(NEW_POINT);
+    setEditForm(emptyEditForm);
+    setEditErr(null);
+    setEditLoading(false);
+    // Point codes are a site-scoped numeric sequence, not derived from the
+    // description (unlike SOP codes) -- one fetch on open is enough, no
+    // need to re-run this as the admin types. Still editable afterward if
+    // they want to override it.
+    nextPointCode(siteId)
+      .then(code => setEditForm(prev => ({ ...prev, pointCode: code })))
+      .catch(() => {});
   }
 
   function cancelEditPoint() {
@@ -114,8 +139,11 @@ export default function ImportPoints() {
   async function saveEditPoint() {
     setEditSaving(true);
     setEditErr(null);
+    const isNew = editingCode === NEW_POINT;
+    const newCode = editForm.pointCode.trim().toUpperCase();
+    const isRename = !isNew && newCode !== editingCode;
     try {
-      const updated = await updatePoint(editingCode, {
+      const body = {
         description: editForm.description.trim().toUpperCase(),
         location:    editForm.location.trim().toUpperCase() || null,
         category:     editForm.category.trim().toUpperCase() || null,
@@ -125,12 +153,16 @@ export default function ImportPoints() {
         notes3:      editForm.notes3.trim().toUpperCase() || null,
         notes4:      editForm.notes4.trim().toUpperCase() || null,
         notes5:      editForm.notes5.trim().toUpperCase() || null,
-      });
-      setSitePoints(prev => prev.map(p => p.id === editingCode ? updated : p));
-      // The point's description may also be embedded in the route lists
-      // currently on screen (preload options, allocated-points panel).
+      };
+      const saved = isNew
+        ? await createPoint({ ...body, point_code: newCode, site_id: siteId })
+        : await updatePoint(editingCode, isRename ? { ...body, point_code: newCode } : body);
+      setSitePoints(prev => isNew ? [...prev, saved] : prev.map(p => p.id === editingCode ? saved : p));
+      // The point's fields (and code, on a rename) may also be embedded in
+      // the route lists currently on screen (preload options, allocated-
+      // points panel).
       setRoutePoints(prev => prev.map(rp => rp.point_id === editingCode
-        ? { ...rp, point: { ...rp.point, description: updated.description, location: updated.location, category: updated.category, sub_category: updated.sub_category } }
+        ? { ...rp, point_id: saved.id, point: { ...rp.point, ...saved } }
         : rp));
       cancelEditPoint();
       markPdaFilesDirty();
@@ -249,12 +281,19 @@ export default function ImportPoints() {
 
       {siteId && (
         <div style={{ marginTop: 24, maxWidth: 700 }}>
-          <h3 style={{ marginBottom: 8 }}>Edit Points</h3>
-          {sortedSitePoints.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <h3 style={{ margin: 0 }}>Edit Points</h3>
+            {editable && (
+              <button className={styles.newBtn} onClick={startAddPoint} disabled={editingCode === NEW_POINT}>
+                + Add Point
+              </button>
+            )}
+          </div>
+          {sortedSitePoints.length === 0 && editingCode !== NEW_POINT ? (
             <div className={styles.empty}>No points for this site yet.</div>
           ) : (
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              <div className={styles.listBox} style={{ maxHeight: 320, overflowY: 'auto', minWidth: 280, flex: '1 1 280px' }}>
+              <div className={styles.listBox} ref={listBoxRef} style={{ maxHeight: 320, overflowY: 'auto', minWidth: 280, flex: '1 1 280px' }}>
                 {sortedSitePoints.map(p => (
                   <div
                     key={p.id}
@@ -273,7 +312,20 @@ export default function ImportPoints() {
                     <>
                       <div className={styles.formRow}>
                         <label className={styles.formLabel}>Point Code</label>
-                        <div>{editingCode}</div>
+                        <input
+                          className={styles.formInput}
+                          value={editForm.pointCode}
+                          disabled={!editable}
+                          maxLength={10}
+                          placeholder="auto-generated"
+                          onChange={e => updateEditField('pointCode', e.target.value.toUpperCase())}
+                        />
+                        {editingCode !== NEW_POINT && (
+                          <span className={styles.formHint}>
+                            Renaming updates this point's routes, questions and SOP jump targets.
+                            Historical transaction records keep the old code.
+                          </span>
+                        )}
                       </div>
                       <div className={styles.formRow}>
                         <label className={styles.formLabel}>Description</label>
@@ -334,9 +386,9 @@ export default function ImportPoints() {
                           <button
                             className={styles.saveBtn}
                             onClick={saveEditPoint}
-                            disabled={editSaving || !editForm.description.trim()}
+                            disabled={editSaving || !editForm.description.trim() || (editingCode === NEW_POINT && !editForm.pointCode.trim())}
                           >
-                            {editSaving ? '…' : 'Save'}
+                            {editSaving ? '…' : editingCode === NEW_POINT ? 'Add' : 'Save'}
                           </button>
                         )}
                         <button className={styles.cancelBtn} onClick={cancelEditPoint}>Cancel</button>

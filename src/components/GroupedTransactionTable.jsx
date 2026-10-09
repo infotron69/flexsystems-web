@@ -89,7 +89,7 @@ export default function GroupedTransactionTable({
                     <tr className={styles.groupHeaderRoute}>
                       <td colSpan={columns.length}>
                         {onRouteClick ? (
-                          <button className={styles.routeNameBtn} onClick={() => onRouteClick(routeCode)} title="Open this route in the Patrol Report">
+                          <button className={styles.routeNameBtn} onClick={() => onRouteClick(routeCode)} title="Open this route in the Inspection Report">
                             {route.name}
                           </button>
                         ) : route.name}

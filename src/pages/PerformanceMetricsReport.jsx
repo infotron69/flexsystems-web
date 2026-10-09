@@ -81,9 +81,14 @@ function classifyRoutePoints(routePoints, txns) {
   for (const rp of routePoints) {
     const visits = visitsByPoint.get(rp.point_id) || [];
     if (visits.length === 0) { counts.notScanned++; continue; }
+    // The bucket reflects this point's status as of the END of the range
+    // (its latest visit), not "did anything ever go wrong" across the
+    // whole window -- a miss that a later visit actually caught and
+    // resolved should read as resolved, not permanently poison a long
+    // date range's summary. (An earlier attempt to make a stale miss
+    // "never disappear" instead made one isolated historical miss bury an
+    // otherwise-clean multi-month record under Not Scanned -- reverted.)
     const latest = [...visits].sort((a, b) => (a.ms ?? 0) - (b.ms ?? 0)).at(-1);
-    // A missed point isn't a genuine inspection, regardless of whatever
-    // Inspection_Result the placeholder row carries.
     if (latest.missed_point === 'Y') counts.notScanned++;
     else if (latest.inspection_result === 'Y') counts.passed++;
     else if (latest.inspection_result === 'N') counts.failed++;
@@ -357,6 +362,25 @@ function TransactionDetailTable({ txns, questionsById }) {
 
 function RoutePanel({ route, total, counts, txns, questionsById }) {
   const [showTxns, setShowTxns] = useState(false);
+
+  // Collapsed detail isn't just visually hidden -- {showTxns && <Table/>}
+  // means it's not in the DOM at all, so printing while collapsed would
+  // print nothing to expand in the first place, no matter what CSS says.
+  // Force it open for the print, then put it back the way the admin had it.
+  // Each route's own panel listens independently, since showTxns is local
+  // to this one route -- a report with many routes forces all of them open.
+  useEffect(() => {
+    let wasOpen = null;
+    function onBeforePrint() { wasOpen = showTxns; setShowTxns(true); }
+    function onAfterPrint() { if (wasOpen != null) setShowTxns(wasOpen); }
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, [showTxns]);
+
   const scanned = total - counts.notScanned;
   const scannedPassedPct = pct(counts.passed, total);
   const scannedPct = pct(scanned, total);
@@ -424,7 +448,7 @@ export default function PerformanceMetricsReport() {
     d.setDate(d.getDate() - 30);
     return d.toISOString().slice(0, 10);
   });
-  const [toDate, setToDate] = useState('');
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     // Points-by-route is fetched once here, in bulk, rather than per-route
@@ -482,7 +506,7 @@ export default function PerformanceMetricsReport() {
     const d = new Date();
     d.setDate(d.getDate() - 30);
     setFromDate(d.toISOString().slice(0, 10));
-    setToDate('');
+    setToDate(new Date().toISOString().slice(0, 10));
   }
 
   // Every customer/site matching the Customer/Site filters gets a row here

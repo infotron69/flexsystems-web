@@ -182,6 +182,19 @@
 }
 .formInput:focus { outline: 2px solid #3b6fe0; border-color: transparent; }
 
+.formHint {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  color: #666;
+  line-height: 1.4;
+}
+.formHint code {
+  background: #f0f0f0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.76rem;
+}
+
 .formInputWide {
   padding: 5px 8px;
   border: 1px solid #bbb;

@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import {
   getIncidents,       createIncident,      updateIncident,      deleteIncident,
   getIncidentSub1,    createIncidentSub1,  updateIncidentSub1,  deleteIncidentSub1,
   getIncidentSub2,    createIncidentSub2,  updateIncidentSub2,  deleteIncidentSub2,
   getIncidentSub3,    createIncidentSub3,  updateIncidentSub3,  deleteIncidentSub3,
   getRoutePoints, createPoint, addPointToRoute,
-  nextIncidentCode,
+  nextIncidentCode, nextSopCode,
 } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
 import { markPdaFilesDirty } from '../pdaDirty';
@@ -109,6 +110,8 @@ function IncidentPanel({
   level,         // "0"-"3", passed through to InlineAddForm for code generation
 }) {
   const [adding, setAdding] = useState(false);
+  const listBoxRef = useRef(null);
+  useScrollRestoration(listBoxRef, `incidents-${level}`);
 
   // Reset add-form when parent changes
   useEffect(() => { setAdding(false); }, [parentName]);
@@ -125,7 +128,7 @@ function IncidentPanel({
         {parentName && <span className={styles.panelParent}>{parentName}</span>}
       </div>
 
-      <div className={styles.listBox}>
+      <div className={styles.listBox} ref={listBoxRef}>
         {/* <Add> pseudo-item */}
         {!disabled && !adding && editable && (
           <div className={styles.addItem} onClick={() => setAdding(true)}>
@@ -212,13 +215,18 @@ function DetailCell({ label, item, onUpdate, onDelete, sopOptions, onSopCreated,
   // one into). This creates the SOP point the same way SopMaintenance.jsx
   // does, then selects it immediately.
   async function handleCreateNewSop() {
-    const newCode = window.prompt('Code for the new SOP (e.g. C000000200):');
-    if (!newCode || !newCode.trim()) return;
-    const trimmedCode = newCode.trim().toUpperCase();
     const description = window.prompt('Description for this SOP:', name.trim() || '');
-    if (description === null) return;
+    if (description === null || !description.trim()) return;
+    const trimmedDescription = description.trim().toUpperCase();
+    let trimmedCode;
     try {
-      await createPoint({ point_code: trimmedCode, description: description.trim().toUpperCase(), site_id: SOP_ROUTE_ID });
+      trimmedCode = await nextSopCode(trimmedDescription);
+    } catch (ex) {
+      alert('Could not generate a SOP code: ' + (ex.response?.data?.detail ?? ex.message));
+      return;
+    }
+    try {
+      await createPoint({ point_code: trimmedCode, description: trimmedDescription, site_id: SOP_ROUTE_ID });
       await addPointToRoute(SOP_ROUTE_ID, { route_id: SOP_ROUTE_ID, point_id: trimmedCode });
       setSopPoint(trimmedCode);
       setHasSop(true);
@@ -276,7 +284,7 @@ function DetailCell({ label, item, onUpdate, onDelete, sopOptions, onSopCreated,
         )}
         {sopOptions.map(rp => (
           <option key={rp.point.point_code} value={rp.point.point_code}>
-            {rp.point.point_code} – {rp.point.description}
+            {rp.point.description}
           </option>
         ))}
       </select>

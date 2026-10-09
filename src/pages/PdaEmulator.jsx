@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import {
-  getGuards, getCustomers, getSites, getRoutes, getRoutePoints,
+  getGuards, getCustomers, getSites, getRoutes, getRoute, getRoutePoints,
   getRoutePointQuestions, getPointsByCode, getPointAllQuestions,
   getIncidents, getIncidentSub1, getIncidentSub2, getIncidentSub3,
   createTransaction, getListFile,
@@ -13,6 +13,23 @@ import styles from './PdaEmulator.module.css';
 
 function timestampForFilename() {
   return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+// Mirrors parseLookupListXml's matching in the real mobile app (DataEngine.js)
+// -- ParentListID match is trimmed/case-insensitive there (real data has
+// casing drift between a question's Lookup Name and the list file, e.g.
+// Question Setup force-uppercases option4 while the list file keeps whatever
+// case an admin typed), with a fallback to every entry when the file only
+// has one distinct group despite the name not matching. A plain === here
+// would silently show "No options/items found" for exactly that case.
+function filterByParentListId(elements, wantedId) {
+  if (!wantedId) return elements;
+  const wanted = wantedId.trim().toLowerCase();
+  const filtered = elements.filter(el => (el.getAttribute('ParentListID') || '').trim().toLowerCase() === wanted);
+  if (filtered.length > 0) return filtered;
+  const groups = new Set(elements.map(el => (el.getAttribute('ParentListID') || '').trim().toLowerCase()));
+  if (groups.size <= 1) return elements;
+  return filtered;
 }
 
 const MAX_QA_SLOTS = 10;
@@ -98,6 +115,11 @@ export default function PdaEmulator() {
     // there's nothing worth picking -- auto-select it instead of showing a
     // dropdown for a choice that doesn't exist in practice.
     getCustomers().then(cs => { if (cs.length) selectCustomer(cs[0].id); });
+    // A route/point deep link never goes through selectRoute (the route
+    // picker step, which is what normally sets siteId), so site_code would
+    // otherwise be submitted as null for every test transaction -- look the
+    // route's site up directly instead.
+    if (deepRouteId) getRoute(deepRouteId).then(r => setSiteId(r.site_id)).catch(() => {});
   }, []);
 
   // Splash auto-advances like a real boot screen -- also click-to-skip so a
@@ -240,7 +262,12 @@ export default function PdaEmulator() {
   }
 
   function selectCustomer(id) {
-    setCustomerId(id); setSiteId(''); setRouteId(''); setSites([]); setAllRoutes([]);
+    // A route/point deep link pre-seeds routeId (see the useState above) so
+    // confirmClockIn can skip straight into startPatrol -- this auto-select
+    // runs on every mount regardless, so it must not stomp that back to ''
+    // (startPatrol's own routeId guard would then reject a clock-in that
+    // actually picked both an operator and a route).
+    setCustomerId(id); setSiteId(''); if (!deepRouteId) setRouteId(''); setSites([]); setAllRoutes([]);
     if (!id) return;
     getSites({ customer_id: id }).then(setSites);
   }
@@ -249,7 +276,11 @@ export default function PdaEmulator() {
   // no separate site-picker step, since the real device shows every site's
   // routes at once (whatever's in ROUTE.TXT) rather than drilling down.
   useEffect(() => {
-    const realSites = sites.filter(s => s.id !== 'Incidents1' && s.name !== 'Incidents1');
+    // PERSP00001 (PerspectiveSite1) is the same kind of non-patrol reserved
+    // site as Incidents1 -- see Sites.jsx's matching filter.
+    const realSites = sites.filter(s =>
+      !['Incidents1', 'PERSP00001'].includes(s.id) && !['Incidents1', 'PerspectiveSite1'].includes(s.name)
+    );
     if (!realSites.length) { setAllRoutes([]); return; }
     Promise.all(
       realSites.map(s => getRoutes({ site_id: s.id }).then(rs => rs.map(r => ({ ...r, siteId: s.id, siteName: s.name }))))
@@ -1130,6 +1161,10 @@ function QuestionForm({ rpq, question, onAnswer }) {
         )
       )}
 
+      {type === '12' && (
+        <ChecklistAnswer question={question} onAnswer={value => onAnswer(value, rpq.jump1)} />
+      )}
+
       {!type && (
         <>
           <div className={styles.error}>This question has no type configured in Question Setup.</div>
@@ -1209,7 +1244,7 @@ function LookupAnswer({ question, onAnswer }) {
           setOptions([...node.children]);
         } else {
           const all = [...doc.getElementsByTagName('LU')];
-          setOptions(all.filter(el => el.getAttribute('ParentListID') === question.option4));
+          setOptions(filterByParentListId(all, question.option4));
         }
       })
       .catch(() => { if (!cancelled) setLoadErr(`Could not load "${question.option1}" from this site's ListFiles folder.`); });
@@ -1264,6 +1299,74 @@ function LookupAnswer({ question, onAnswer }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ChecklistAnswer — real CHECKLIST rendering (e.g. a Lockout/Tagout SOP).
+// option1=List File Name, option4=Lookup Name (ParentListID filter), same
+// flat <LU> list as LookupAnswer's LookupType branch -- CHECKLIST has no
+// TreeType/drill-down support. Unlike LookupAnswer's one-tap answer, every
+// item stays independently checkable and submission is never blocked on
+// how many are checked (a real SOP still needs the visit recorded even if
+// a step was missed -- see handleChecklistDone in the mobile app). The
+// answer is every CHECKED item's Value joined by "; ", matching the mobile
+// app's transaction format exactly (not a bare choice-count like
+// MULT_SELECT, since checklist item count can exceed 9).
+// ─────────────────────────────────────────────────────────────────────────────
+function ChecklistAnswer({ question, onAnswer }) {
+  const [loadErr, setLoadErr] = useState(null);
+  const [items, setItems] = useState(null); // null = loading
+  const [checked, setChecked] = useState(() => new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    setItems(null);
+    setLoadErr(null);
+    setChecked(new Set());
+    getListFile(question.option1)
+      .then(text => {
+        if (cancelled) return;
+        const doc = new DOMParser().parseFromString(text, 'application/xml');
+        if (doc.querySelector('parsererror')) throw new Error('parse error');
+        const all = [...doc.getElementsByTagName('LU')];
+        setItems(filterByParentListId(all, question.option4));
+      })
+      .catch(() => { if (!cancelled) setLoadErr(`Could not load "${question.option1}" from this site's ListFiles folder.`); });
+    return () => { cancelled = true; };
+  }, [question.option1, question.option4]);
+
+  if (loadErr) return <div className={styles.error}>{loadErr}</div>;
+  if (items === null) return <div className={styles.loading}>Loading checklist…</div>;
+  if (items.length === 0) {
+    return <div className={styles.error}>No checklist items found{question.option4 ? ` for "${question.option4}"` : ''}.</div>;
+  }
+
+  function toggle(value) {
+    setChecked(prev => {
+      const n = new Set(prev);
+      n.has(value) ? n.delete(value) : n.add(value);
+      return n;
+    });
+  }
+
+  return (
+    <>
+      <div className={styles.checkboxCol}>
+        {items.map((el, i) => {
+          const value = el.getAttribute('Value') ?? '';
+          return (
+            <label key={`${el.getAttribute('ID') ?? ''}-${i}`}>
+              <input type="checkbox" checked={checked.has(value)} onChange={() => toggle(value)} />
+              {value}
+            </label>
+          );
+        })}
+      </div>
+      <button className={styles.primaryBtn} onClick={() => onAnswer([...checked].join('; '))}>
+        ✓ Confirm Selections / Next
+      </button>
+    </>
   );
 }
 

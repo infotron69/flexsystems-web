@@ -22,14 +22,26 @@ import styles from './PointQuestions.module.css';
 // ─────────────────────────────────────────────────────────────────────────────
 function ExpandedGrid({ dest, onFollow }) {
   const { code, point, questions: localQs } = dest;
+  const navigate = useNavigate();
+  // Every RoutePointQuestion row carries its own route_id -- so the route
+  // this destination's checklist actually lives on is whatever its own
+  // rows say, not assumed (a jump target is usually but not always an
+  // Incidents1 SOP point). Only known once localQs has loaded with at
+  // least one row.
+  const destRouteId = localQs?.[0]?.route_id;
 
   return (
     <div className={styles.expandedSection} id={`dest-${code}`}>
-      <div className={styles.expandedTitle}>
+      <div
+        className={styles.expandedTitle}
+        onDoubleClick={() => destRouteId && navigate(`/setup/routes/${destRouteId}/points/${code}/questions`)}
+        style={destRouteId ? { cursor: 'pointer' } : undefined}
+        title={destRouteId ? 'Double-click to edit this point’s questions' : undefined}
+      >
         Following:&nbsp;
         <strong>{point?.point_code?.trim() ?? code}</strong>
         {point?.description && <> &ndash; {point.description}</>}
-        <span className={styles.expandedReadOnlyNote}>view only — edit on its own point/route</span>
+        <span className={styles.expandedReadOnlyNote}>view only — edit on its own point/route (double-click to open it)</span>
       </div>
 
       {localQs === null ? (
@@ -412,6 +424,11 @@ export default function PointQuestions() {
         >
           {routeId === 'Incidents1' ? '← SOP Maintenance' : '← Points'}
         </button>
+        {dirty && editable && (
+          <button className={styles.saveBtn} onClick={saveAll} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        )}
         <div className={styles.titleBlock}>
           <span className={styles.routeLabel}>{route?.name}</span>
           <span className={styles.arrow}>›</span>
@@ -434,11 +451,6 @@ export default function PointQuestions() {
           <button className={styles.backBtn} onClick={() => navigate(`/setup/pda-emulator/${routeId}/${pointId}`)}>
             📱 PDA Emulator →
           </button>
-          {dirty && editable && (
-            <button className={styles.saveBtn} onClick={saveAll} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          )}
         </div>
       </div>
 

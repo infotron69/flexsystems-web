@@ -98,10 +98,18 @@ export const createRoute = (body)     => client.post('/routes', body).then(r => 
 export const updateRoute = (id, body) => client.patch(`/routes/${id}`, body).then(r => r.data);
 export const deleteRoute = (id)       => client.delete(`/routes/${id}`);
 
+// Copies every point allocation + question checklist from another route
+// (same site only) onto this one; points already on this route are left
+// untouched. Returns { points_copied, points_skipped, questions_copied }.
+export const copyRoutePointsAndQuestions = (routeId, sourceRouteId) =>
+  client.post(`/routes/${routeId}/copy-from/${sourceRouteId}`).then(r => r.data);
+
 // Points assigned to a route (RoutePointSetup, includes embedded point detail)
 export const getRoutePoints = (routeId) =>
   client.get(`/routes/${routeId}/points`).then(r => r.data);
 
+export const updateRoutePoint = (routeId, pointId, body) =>
+  client.patch(`/routes/${routeId}/points/${pointId}`, body).then(r => r.data);
 export const addPointToRoute = (routeId, body) =>
   client.post(`/routes/${routeId}/points`, body).then(r => r.data);
 export const removePointFromRoute = (routeId, pointId) =>
@@ -150,6 +158,8 @@ export const getPoint    = (id)       => client.get(`/points/${id}`).then(r => r
 export const createPoint = (body)     => client.post('/points', body).then(r => r.data);
 export const updatePoint = (id, body) => client.patch(`/points/${id}`, body).then(r => r.data);
 export const deletePoint = (id)       => client.delete(`/points/${id}`);
+export const nextSopCode = (name)     => client.get('/points/next-sop-code', { params: { name } }).then(r => r.data.code);
+export const nextPointCode = (siteId) => client.get('/points/next-point-code', { params: { site_id: siteId } }).then(r => r.data.code);
 
 // Bulk-create points from an uploaded spreadsheet, allocate them onto a
 // route, and optionally clone another point's question checklist onto
@@ -227,6 +237,7 @@ export const getLastDownload = () => client.get('/transactions/last-download').t
 // ---------------------------------------------------------------------------
 export const getPdaSites    = ()         => client.get('/pda/sites').then(r => r.data);
 export const getListFile    = (filename) => client.get(`/pda/listfile/${encodeURIComponent(filename)}`, { responseType: 'text' }).then(r => r.data);
+export const saveListFile   = (filename, content) => client.put(`/pda/listfile/${encodeURIComponent(filename)}`, { content }).then(r => r.data);
 export const generateAllPda = ()         => client.post('/pda/generate').then(r => r.data);
 export const generatePda    = (siteName) => client.post(`/pda/generate/${siteName}`).then(r => r.data);
 
@@ -243,6 +254,11 @@ export const sendTestReport    = (id)         => client.post(`/tenants/${id}/sen
 // SMTP settings (same admin-only gating as the tenant registry above).
 export const getSmtpSettings    = ()     => client.get('/settings/smtp').then(r => r.data);
 export const updateSmtpSettings = (body) => client.put('/settings/smtp', body).then(r => r.data);
+
+// Device Setup Code (Setup > Device Setup Code) -- per-tenant, unlike SMTP
+// above. GET returns null if this tenant hasn't saved one yet.
+export const getDeviceSetupConfig    = ()     => client.get('/device-setup-config').then(r => r.data);
+export const updateDeviceSetupConfig = (body) => client.put('/device-setup-config', body).then(r => r.data);
 
 // ---------------------------------------------------------------------------
 // Audit log (Setup change history — see app.audit on the backend)

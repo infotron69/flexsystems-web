@@ -5,9 +5,10 @@ import styles from './SetupMenu.module.css';
 // operational/transaction reports. Configuration reports (Report_Type 3)
 // live under Setup → Configuration Reports instead.
 const REPORTS = [
-  { label: 'Patrol Report',             sub: 'Transaction history — sortable, filterable',      to: '/reports/transactions' },
+  { label: 'Inspection Report',         sub: 'Transaction history — sortable, filterable',      to: '/reports/transactions' },
   { label: 'GPS Map',                   sub: 'GPS-tagged scans plotted on a map, with full data table', to: '/reports/gps-map' },
   { label: 'Performance Metrics',       sub: 'Points scanned/passed/failed/missed per route, with chart', to: '/reports/performance' },
+  { label: 'Location Performance',      sub: 'Pick any set of points to track, across any route',       to: '/reports/location-performance' },
 ];
 
 export default function Reports() {

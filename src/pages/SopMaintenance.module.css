@@ -3,15 +3,8 @@
 .header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
 
 .backBtn {
-  padding: 5px 12px;
-  border: 1px solid #ccc;
-  background: #fff;
-  color: #444;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  cursor: pointer;
+  composes: backBtn from './Questions.module.css';
 }
-.backBtn:hover { background: #f3f4f6; }
 
 .heading {
   margin: 0;
