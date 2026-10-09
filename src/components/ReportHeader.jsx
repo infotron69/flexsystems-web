@@ -4,6 +4,9 @@ import styles from '../pages/Report.module.css';
 
 export default function ReportHeader({ title, subtitle, backTo = '/reports', onExport, onBeforePrint }) {
   const navigate = useNavigate();
+  // The logged-in tenant's company name -- what the Dashboard shows beside
+  // its title -- so every report, printed or saved as PDF, says whose data it is.
+  const customerName = localStorage.getItem('tenantLabel');
 
   async function handlePrint() {
     // onBeforePrint may return a promise (e.g. a large report staggering its
@@ -20,6 +23,7 @@ export default function ReportHeader({ title, subtitle, backTo = '/reports', onE
           <img src={logo} alt="FlexSystems" className={styles.reportLogo} />
           <h2 className={styles.heading}>{title}</h2>
         </div>
+        {customerName && <span className={styles.customerName}>{customerName}</span>}
         <span className={styles.subheading}>{subtitle}</span>
       </div>
       <div className={styles.headerActions}>
