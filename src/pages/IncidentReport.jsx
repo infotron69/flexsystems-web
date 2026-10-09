@@ -2,14 +2,43 @@ import { useEffect, useState } from 'react';
 import { getIncidents, getIncidentSub1, getIncidentSub2, getIncidentSub3 } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import FindSortBar from '../components/FindSortBar';
 import { downloadCsv } from '../utils/exportCsv';
+import { useFindSort, matchesFind, compareValues } from '../utils/reportView';
 import styles from './Report.module.css';
+
+const SORT_OPTIONS = [
+  { key: 'name', label: 'Name' },
+  { key: 'code', label: 'Code' },
+];
+
+// Levels below an incident type, top-down.
+const CHILD_KEYS = ['sub1', 'sub2', 'sub3'];
 
 function sopBadge(item) {
   return item.has_sop_questions === 'Y' ? ` — SOP → ${item.sop_jump_point || '?'}` : '';
 }
 
+// Keeps a node if it matches Find (with its whole subtree) or any descendant
+// does (with just the matching branches).
+function findInTree(node, keys, find) {
+  if (!find.trim() || matchesFind(find, node.name, node.code)) return node;
+  const key = keys[0];
+  if (!key) return null;
+  const kids = node[key].map(k => findInTree(k, keys.slice(1), find)).filter(Boolean);
+  return kids.length ? { ...node, [key]: kids } : null;
+}
+
+// Sorts siblings at every level by the chosen field.
+function sortTree(nodes, keys, sortKey, sortDir) {
+  const sorted = [...nodes].sort((a, b) => compareValues(a[sortKey], b[sortKey], sortDir));
+  const key = keys[0];
+  if (!key) return sorted;
+  return sorted.map(n => ({ ...n, [key]: sortTree(n[key], keys.slice(1), sortKey, sortDir) }));
+}
+
 export default function IncidentReport() {
+  const view = useFindSort('name');
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState([]);
   const [masterFilter, setMasterFilter] = useState('');
@@ -35,8 +64,11 @@ export default function IncidentReport() {
 
   // SOP-only: keep a node if it (or any descendant) has Build-SOP configured.
   const hasSop = item => item.has_sop_questions === 'Y';
-  const visibleTree = tree
+  const searched = tree
     .filter(m => !masterFilter || m.id === masterFilter)
+    .map(m => findInTree(m, CHILD_KEYS, view.find))
+    .filter(Boolean);
+  const visibleTree = sortTree(searched, CHILD_KEYS, view.sortKey, view.sortDir)
     .map(m => ({
       ...m,
       sub1: m.sub1
@@ -112,6 +144,12 @@ export default function IncidentReport() {
           <input type="checkbox" checked={sopOnly} onChange={e => setSopOnly(e.target.checked)} />
           SOP only (items with Build SOP configured)
         </label>
+        <FindSortBar
+          find={view.find} onFind={view.setFind} placeholder="Incident name or code…"
+          sortKey={view.sortKey} onSortKey={view.setSortKey}
+          sortDir={view.sortDir} onSortDir={view.setSortDir}
+          sortOptions={SORT_OPTIONS}
+        />
       </div>
 
       {visibleTree.map(m => (

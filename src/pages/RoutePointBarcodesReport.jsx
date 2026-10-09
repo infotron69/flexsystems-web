@@ -4,9 +4,22 @@ import { getSites, getRoutes, getAllRoutePoints } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
 import Barcode128 from '../components/Barcode128';
+import FindSortBar from '../components/FindSortBar';
+import { useFindSort, matchesFind, findAndSort } from '../utils/reportView';
 import styles from './Report.module.css';
 
+const SORT_OPTIONS = [
+  { key: 'point_code', label: 'Point Code' },
+  { key: 'description', label: 'Description' },
+  { key: 'location', label: 'Location' },
+];
+
+const sortValue = (ap, key) => ({
+  point_code: ap.point?.point_code, description: ap.point?.description, location: ap.point?.location,
+})[key];
+
 export default function RoutePointBarcodesReport() {
+  const view = useFindSort('point_code');
   const [loading, setLoading] = useState(true);
   const [sites, setSites] = useState([]);
   const [routes, setRoutes] = useState([]);
@@ -39,7 +52,23 @@ export default function RoutePointBarcodesReport() {
   if (loading) return <div className={styles.page}><div className={styles.loading}>Loading…</div></div>;
 
   const now = new Date().toLocaleString();
-  const visibleRoutes = routes.filter(r => (!siteId || r.site_id === siteId) && (!routeId || r.id === routeId));
+
+  // A route whose own name/code matches Find keeps all its points; otherwise
+  // only matching points are shown, and a route with none is hidden.
+  function viewRoute(route) {
+    const all = pointsByRoute[route.id] ?? [];
+    const routeMatch = matchesFind(view.find, route.name, route.route_code);
+    const pts = findAndSort(
+      all, view,
+      ap => [ap.point?.point_code, ap.point?.description, ap.point?.location],
+      sortValue, routeMatch,
+    );
+    const show = !view.find.trim() || routeMatch || pts.length > 0;
+    return { all, pts, show };
+  }
+
+  const visibleRoutes = routes.filter(r =>
+    (!siteId || r.site_id === siteId) && (!routeId || r.id === routeId) && viewRoute(r).show);
 
   return (
     <div className={`${styles.page} ${styles.allowPageBreak}`}>
@@ -61,6 +90,12 @@ export default function RoutePointBarcodesReport() {
             {routes.filter(r => !siteId || r.site_id === siteId).map(r => <option key={r.id} value={r.id}>{r.name} — {r.route_code}</option>)}
           </select>
         </div>
+        <FindSortBar
+          find={view.find} onFind={view.setFind} placeholder="Route, point, location…"
+          sortKey={view.sortKey} onSortKey={view.setSortKey}
+          sortDir={view.sortDir} onSortDir={view.setSortDir}
+          sortOptions={SORT_OPTIONS}
+        />
       </div>
 
       {sites.filter(s => !siteId || s.id === siteId).map(site => {
@@ -70,16 +105,18 @@ export default function RoutePointBarcodesReport() {
           <div className={styles.section} key={site.id}>
             <h3 className={styles.sectionTitle}>{site.name} ({site.site_code})</h3>
             {siteRoutes.map(route => {
-              const pts = pointsByRoute[route.id] ?? [];
+              const { all, pts } = viewRoute(route);
               return (
                 <div key={route.id} style={{ marginBottom: 24 }}>
                   <div className={styles.subTitle}>
                     {route.name} — {route.route_code}
                     {route.is_template && ' (Template)'}
-                    <span className={styles.countBadge}>{pts.length} point{pts.length !== 1 ? 's' : ''}</span>
+                    <span className={styles.countBadge}>
+                      {pts.length !== all.length ? `${pts.length} of ${all.length}` : pts.length} point{all.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                   {pts.length === 0 ? (
-                    <div className={styles.empty}>No points assigned</div>
+                    <div className={styles.empty}>{all.length === 0 ? 'No points assigned' : 'No points match'}</div>
                   ) : (
                     <table className={styles.table}>
                       <thead>

@@ -2,10 +2,21 @@ import { useEffect, useState } from 'react';
 import { getCustomers, getSites, getRoutes, getPoints, getGuards, getAllQuestions } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import FindSortBar from '../components/FindSortBar';
 import { downloadCsv } from '../utils/exportCsv';
+import { useFindSort, matchesFind, compareValues } from '../utils/reportView';
 import styles from './Report.module.css';
 
+const SORT_OPTIONS = [
+  { key: 'site_code', label: 'Site Code' },
+  { key: 'name', label: 'Site Name' },
+  { key: 'city', label: 'City / State' },
+  { key: 'routes', label: 'Routes' },
+  { key: 'points', label: 'Points' },
+];
+
 export default function SiteSummaryReport() {
+  const view = useFindSort('site_code');
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
   const [sites, setSites] = useState([]);
@@ -28,14 +39,31 @@ export default function SiteSummaryReport() {
 
   const now = new Date().toLocaleString();
 
+  // A customer whose own name matches Find keeps all its sites; otherwise
+  // only the sites that match are shown.
+  function sitesFor(cust) {
+    const custMatch = matchesFind(view.find, cust.name);
+    const sortVal = x => ({
+      site_code: x.s.site_code, name: x.s.name, city: x.s.city || '',
+      routes: x.routeCount, points: x.pointCount,
+    })[view.sortKey];
+    return sites
+      .filter(s => s.customer_id === cust.id)
+      .map(s => ({
+        s,
+        routeCount: routes.filter(r => r.site_id === s.id).length,
+        pointCount: points.filter(p => p.site_id === s.id).length,
+      }))
+      .filter(x => custMatch || matchesFind(view.find, x.s.site_code, x.s.name, x.s.city, x.s.state))
+      .sort((a, b) => compareValues(sortVal(a), sortVal(b), view.sortDir));
+  }
+
   function handleExport() {
     const headers = ['Customer', 'Site Code', 'Site Name', 'City', 'State', 'Routes', 'Points'];
     const rows = customers
       .filter(c => !customerId || c.id === customerId)
-      .flatMap(cust => sites.filter(s => s.customer_id === cust.id).map(s => [
-        cust.name, s.site_code, s.name, s.city || '', s.state || '',
-        routes.filter(r => r.site_id === s.id).length,
-        points.filter(p => p.site_id === s.id).length,
+      .flatMap(cust => sitesFor(cust).map(({ s, routeCount, pointCount }) => [
+        cust.name, s.site_code, s.name, s.city || '', s.state || '', routeCount, pointCount,
       ]));
     downloadCsv('site-summary', headers, rows);
   }
@@ -53,6 +81,12 @@ export default function SiteSummaryReport() {
             {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
+        <FindSortBar
+          find={view.find} onFind={view.setFind} placeholder="Customer, site, city…"
+          sortKey={view.sortKey} onSortKey={view.setSortKey}
+          sortDir={view.sortDir} onSortDir={view.setSortDir}
+          sortOptions={SORT_OPTIONS}
+        />
       </div>
 
       <div className={styles.section}>
@@ -67,7 +101,8 @@ export default function SiteSummaryReport() {
       </div>
 
       {customers.filter(c => !customerId || c.id === customerId).map(cust => {
-        const custSites = sites.filter(s => s.customer_id === cust.id);
+        const custSites = sitesFor(cust);
+        if (view.find.trim() && custSites.length === 0) return null;
         return (
           <div className={styles.section} key={cust.id}>
             <h3 className={styles.sectionTitle}>
@@ -84,19 +119,15 @@ export default function SiteSummaryReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  {custSites.map(s => {
-                    const siteRoutes = routes.filter(r => r.site_id === s.id);
-                    const sitePoints = points.filter(p => p.site_id === s.id);
-                    return (
-                      <tr key={s.id}>
-                        <td>{s.site_code}</td>
-                        <td>{s.name}</td>
-                        <td>{s.city ? `${s.city}${s.state ? ', ' + s.state : ''}` : '—'}</td>
-                        <td>{siteRoutes.length}</td>
-                        <td>{sitePoints.length}</td>
-                      </tr>
-                    );
-                  })}
+                  {custSites.map(({ s, routeCount, pointCount }) => (
+                    <tr key={s.id}>
+                      <td>{s.site_code}</td>
+                      <td>{s.name}</td>
+                      <td>{s.city ? `${s.city}${s.state ? ', ' + s.state : ''}` : '—'}</td>
+                      <td>{routeCount}</td>
+                      <td>{pointCount}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}

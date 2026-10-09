@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getGuards } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import FindSortBar from '../components/FindSortBar';
 import { downloadCsv } from '../utils/exportCsv';
 import styles from './Report.module.css';
 
@@ -33,7 +34,8 @@ export default function OperatorReport() {
   const filtered = useMemo(() => {
     const lc = search.trim().toLowerCase();
     const list = rows.filter(g =>
-      (!lc || `${g.last_name} ${g.first_name ?? ''} ${g.card_number}`.toLowerCase().includes(lc))
+      (!lc || [g.last_name, g.first_name, g.card_number, g.employee_number, g.phone, g.city, g.state]
+        .some(v => (v ?? '').toLowerCase().includes(lc)))
     );
     list.sort((a, b) => {
       const av = a[sortKey] ?? '';
@@ -65,10 +67,12 @@ export default function OperatorReport() {
       <div className={styles.meta}>Generated {now} — {filtered.length} of {rows.length} operators</div>
 
       <div className={styles.filterBar}>
-        <div className={styles.filterField}>
-          <label className={styles.filterLabel}>Search</label>
-          <input className={styles.filterInput} value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or card #…" />
-        </div>
+        <FindSortBar
+          find={search} onFind={setSearch} placeholder="Name, card #, phone, city…"
+          sortKey={sortKey} onSortKey={setSortKey}
+          sortDir={sortDir} onSortDir={setSortDir}
+          sortOptions={COLUMNS.map(c => ({ key: c.key, label: c.label }))}
+        />
       </div>
 
       <div className={styles.section}>
