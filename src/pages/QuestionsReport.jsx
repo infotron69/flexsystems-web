@@ -2,8 +2,17 @@ import { useEffect, useState, useMemo } from 'react';
 import { getAllQuestions } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import FindSortBar from '../components/FindSortBar';
 import { downloadCsv } from '../utils/exportCsv';
+import { useFindSort, matchesFind, compareValues } from '../utils/reportView';
 import styles from './Report.module.css';
+
+const SORT_OPTIONS = [
+  { key: 'description', label: 'Description' },
+  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'type', label: 'Type' },
+  { key: 'default', label: 'Default' },
+];
 
 const TYPE_LABEL = {
   '1': 'YES/NO', '2': 'MULTICHOICE', '3': 'ALPHA/NUM', '4': 'LOW/NORMAL/HIGH',
@@ -16,7 +25,7 @@ export default function QuestionsReport() {
   const [rows, setRows] = useState([]);
   const [category, setCategory] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const view = useFindSort('description');
 
   useEffect(() => {
     getAllQuestions().then(setRows).finally(() => setLoading(false));
@@ -28,22 +37,32 @@ export default function QuestionsReport() {
   );
 
   const filteredRows = useMemo(() => {
-    const lc = search.trim().toLowerCase();
     return rows.filter(q =>
       (!category || (q.category || '(Uncategorized)') === category) &&
       (!typeFilter || q.question_type === typeFilter) &&
-      (!lc || q.description.toLowerCase().includes(lc))
+      matchesFind(
+        view.find, q.description, q.category, q.subcategory,
+        TYPE_LABEL[q.question_type], q.mask, q.default_response,
+        q.option1, q.option2, q.option3, q.option4, q.option5,
+      )
     );
-  }, [rows, category, typeFilter, search]);
+  }, [rows, category, typeFilter, view.find]);
 
   const byCategory = useMemo(() => {
+    const sortVal = q => ({
+      description: q.description, subcategory: q.subcategory || '',
+      type: TYPE_LABEL[q.question_type] ?? q.question_type ?? '', default: q.default_response || '',
+    })[view.sortKey];
     const m = {};
     for (const q of filteredRows) {
       const cat = q.category || '(Uncategorized)';
       (m[cat] ??= []).push(q);
     }
+    for (const list of Object.values(m)) {
+      list.sort((a, b) => compareValues(sortVal(a), sortVal(b), view.sortDir));
+    }
     return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
-  }, [filteredRows]);
+  }, [filteredRows, view.sortKey, view.sortDir]);
 
   if (loading) return <div className={styles.page}><div className={styles.loading}>Loading…</div></div>;
 
@@ -78,10 +97,12 @@ export default function QuestionsReport() {
             {Object.entries(TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
-        <div className={styles.filterField}>
-          <label className={styles.filterLabel}>Search</label>
-          <input className={styles.filterInput} value={search} onChange={e => setSearch(e.target.value)} placeholder="Description contains…" />
-        </div>
+        <FindSortBar
+          find={view.find} onFind={view.setFind} placeholder="Description, category, options…"
+          sortKey={view.sortKey} onSortKey={view.setSortKey}
+          sortDir={view.sortDir} onSortDir={view.setSortDir}
+          sortOptions={SORT_OPTIONS}
+        />
       </div>
 
       {byCategory.map(([cat, qs]) => (

@@ -67,6 +67,7 @@ export default function ImportPoints() {
     setRoutePoints([]);
     setQuestionCounts({});
     setSitePoints([]);
+    setPointSearch('');
     setPreloadFrom('');
     setResult(null);
     setErr(null);
@@ -180,10 +181,19 @@ export default function ImportPoints() {
     [routePoints, questionCounts]
   );
 
-  const sortedSitePoints = useMemo(
-    () => [...sitePoints].sort((a, b) => a.point_code.localeCompare(b.point_code)),
-    [sitePoints]
-  );
+  const [pointSearch, setPointSearch] = useState('');
+
+  // Matches against everything shown or editable on a point, so a code, part
+  // of a description, a location or a PDA note all find it.
+  const sortedSitePoints = useMemo(() => {
+    const q = pointSearch.trim().toLowerCase();
+    const matches = !q ? sitePoints : sitePoints.filter(p =>
+      [p.point_code, p.description, p.location, p.category, p.sub_category,
+        p.notes1, p.notes2, p.notes3, p.notes4, p.notes5]
+        .some(v => (v ?? '').toLowerCase().includes(q))
+    );
+    return [...matches].sort((a, b) => a.point_code.localeCompare(b.point_code));
+  }, [sitePoints, pointSearch]);
 
   async function submit() {
     setImporting(true);
@@ -289,8 +299,28 @@ export default function ImportPoints() {
               </button>
             )}
           </div>
-          {sortedSitePoints.length === 0 && editingCode !== NEW_POINT ? (
+          {sitePoints.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <input
+                className={styles.formInput}
+                style={{ flex: '0 1 320px' }}
+                type="search"
+                value={pointSearch}
+                placeholder="Search points by code, description, location…"
+                onChange={e => setPointSearch(e.target.value)}
+              />
+              {pointSearch && (
+                <button className={styles.cancelBtn} onClick={() => setPointSearch('')}>Clear</button>
+              )}
+              <span className={styles.formHint}>
+                {pointSearch.trim() ? `${sortedSitePoints.length} of ${sitePoints.length} points` : `${sitePoints.length} points`}
+              </span>
+            </div>
+          )}
+          {sitePoints.length === 0 && editingCode !== NEW_POINT ? (
             <div className={styles.empty}>No points for this site yet.</div>
+          ) : sortedSitePoints.length === 0 && editingCode !== NEW_POINT ? (
+            <div className={styles.empty}>No points match "{pointSearch.trim()}".</div>
           ) : (
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div className={styles.listBox} ref={listBoxRef} style={{ maxHeight: 320, overflowY: 'auto', minWidth: 280, flex: '1 1 280px' }}>

@@ -3,8 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { getSites, getRoutes, getAllRoutePoints, getRoutePointQuestionsAll, getPoints, getPointAllQuestions } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import FindSortBar from '../components/FindSortBar';
 import { downloadCsv } from '../utils/exportCsv';
+import { useFindSort, matchesFind, findAndSort } from '../utils/reportView';
 import styles from './Report.module.css';
+
+const SORT_OPTIONS = [
+  { key: 'point_code', label: 'Point Code' },
+  { key: 'description', label: 'Point Description' },
+  { key: 'questions', label: 'Number of Questions' },
+];
 
 const TYPE_LABEL = {
   '1': 'YES/NO', '2': 'MULTICHOICE', '3': 'ALPHA/NUM', '4': 'LOW/NORMAL/HIGH',
@@ -55,6 +63,7 @@ function jumpText(value, seqnoToDesc, pointsByCode) {
 
 export default function RouteQuestionsReport() {
   const navigate = useNavigate();
+  const view = useFindSort('point_code');
   const [sites, setSites] = useState([]);
   const [siteId, setSiteId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -254,14 +263,31 @@ export default function RouteQuestionsReport() {
 
   const now = new Date().toLocaleString();
 
+  // The SOP-only filter first, then Find and Sort. A route whose own
+  // name/code matches Find keeps all its points; otherwise a point is kept if
+  // its code/description or any of its question descriptions match. A kept
+  // point always shows its whole question list, since the jumps only make
+  // sense in context.
+  function viewRoute(route) {
+    const all = (data[route.id] ?? []).filter(entry =>
+      !sopOnly || entry.questions.some(q => q.question?.question_type === '9')
+    );
+    const routeMatch = matchesFind(view.find, route.name, route.route_code);
+    const pts = findAndSort(
+      all, view,
+      e => [e.point?.point_code, e.point?.description, ...e.questions.map(q => q.question?.description)],
+      (e, key) => ({ point_code: e.point?.point_code, description: e.point?.description, questions: e.questions.length })[key],
+      routeMatch,
+    );
+    return { all, pts, show: !view.find.trim() || routeMatch || pts.length > 0 };
+  }
+
   function handleExport() {
     const headers = ['Route', 'Route Code', 'Point Code', 'Description', 'Seq', 'Question', 'Type', 'Req', 'Jump 1', 'Jump 2', 'Jump 3', 'Jump 4', 'Jump 5'];
     const rows = routes
-      .filter(r => !routeFilter || r.id === routeFilter)
+      .filter(r => (!routeFilter || r.id === routeFilter) && viewRoute(r).show)
       .flatMap(route => {
-        const pts = (data[route.id] ?? []).filter(entry =>
-          !sopOnly || entry.questions.some(q => q.question?.question_type === '9')
-        );
+        const { pts } = viewRoute(route);
         return pts.flatMap(({ point, questions }) => {
           if (questions.length === 0) {
             return [[route.name, route.route_code, point?.point_code || '', point?.description || '', '', '', '', '', '', '', '', '', '']];
@@ -307,18 +333,22 @@ export default function RouteQuestionsReport() {
           <input type="checkbox" checked={expandNested} onChange={e => setExpandNested(e.target.checked)} />
           Show nested SOP questions (expand each Clone Jump's destination checklist inline)
         </label>
+        <FindSortBar
+          find={view.find} onFind={view.setFind} placeholder="Route, point or question…"
+          sortKey={view.sortKey} onSortKey={view.setSortKey}
+          sortDir={view.sortDir} onSortDir={view.setSortDir}
+          sortOptions={SORT_OPTIONS}
+        />
       </div>
 
       {loadingDetail ? <div className={styles.loading}>Loading route detail…</div> : routes.filter(r => !routeFilter || r.id === routeFilter).map(route => {
-        const pts = (data[route.id] ?? []).filter(entry =>
-          !sopOnly || entry.questions.some(q => q.question?.question_type === '9')
-        );
-        if (sopOnly && pts.length === 0) return null;
+        const { all, pts, show } = viewRoute(route);
+        if ((sopOnly && all.length === 0) || !show) return null;
         return (
           <div className={styles.section} key={route.id}>
             <h3 className={styles.sectionTitle}>{route.name} — {route.route_code}</h3>
             {pts.length === 0 ? (
-              <div className={styles.empty}>No points assigned</div>
+              <div className={styles.empty}>{all.length === 0 ? 'No points assigned' : 'No points match'}</div>
             ) : pts.map(({ point, questions }) => (
               <div key={point?.id ?? Math.random()} style={{ marginBottom: 14 }}>
                 <div

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getRoutePoints, getRoutePointQuestions, getRoutePointQuestionsAll, getPoints, sopLookupAll, getAllJumpTargets, updatePoint } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import FindSortBar from '../components/FindSortBar';
 import { downloadCsv } from '../utils/exportCsv';
 import { jumpLabels } from './pointQuestionsShared';
 import { buildFlowGraph, graphToMermaid } from '../utils/sopFlowchart';
@@ -10,6 +11,15 @@ import MermaidDiagram from '../components/MermaidDiagram';
 import styles from './Report.module.css';
 
 const SOP_ROUTE_ID = 'Incidents1';
+
+const SORT_OPTIONS = [
+  { key: 'id', label: 'ID' },
+  { key: 'description', label: 'SOP Description' },
+  { key: 'category', label: 'Category' },
+  { key: 'subCategory', label: 'Sub-Category' },
+  { key: 'referencedBy', label: 'Referenced By' },
+  { key: 'questions', label: 'Number of Questions' },
+];
 
 // Recursively walking the jump graph could in theory blow up (a MULTICHOICE
 // with several branches whose targets are themselves MULTICHOICE...) -- these
@@ -249,7 +259,8 @@ export default function SopMaintReport() {
       if (filterCategory && rp.point.category !== filterCategory) return false;
       if (filterSubCategory && rp.point.sub_category !== filterSubCategory) return false;
       if (!lc) return true;
-      return rp.point.description.toLowerCase().includes(lc) || rp.point.point_code.toLowerCase().includes(lc);
+      return [rp.point.description, rp.point.point_code, rp.point.category, rp.point.sub_category]
+        .some(v => (v ?? '').toLowerCase().includes(lc));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sorted, search, onlyUnused, showHidden, filterCategory, filterSubCategory, referencedBy, jumpTargets]);
@@ -354,10 +365,12 @@ export default function SopMaintReport() {
       </div>
 
       <div className={styles.filterBar}>
-        <div className={styles.filterField}>
-          <label className={styles.filterLabel}>Search</label>
-          <input className={styles.filterInput} value={search} onChange={e => setSearch(e.target.value)} placeholder="Description or ID contains…" />
-        </div>
+        <FindSortBar
+          find={search} onFind={setSearch} placeholder="Description, ID or category…"
+          sortKey={sortKey} onSortKey={setSortKey}
+          sortDir={sortDir} onSortDir={setSortDir}
+          sortOptions={SORT_OPTIONS}
+        />
         <div className={styles.filterField}>
           <label className={styles.filterLabel}>Category</label>
           <select
