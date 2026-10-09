@@ -44,6 +44,12 @@
   color: #667;
 }
 
+.customerName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
 .meta {
   font-size: 0.76rem;
   color: #999;
