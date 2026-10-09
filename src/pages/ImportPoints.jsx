@@ -141,7 +141,10 @@ export default function ImportPoints() {
     setEditSaving(true);
     setEditErr(null);
     const isNew = editingCode === NEW_POINT;
-    const newCode = editForm.pointCode.trim().toUpperCase();
+    // New point IDs are always 10 characters -- an all-digit code gets its
+    // leading zeros back (the server does the same for imports and renames).
+    const typed = editForm.pointCode.trim().toUpperCase();
+    const newCode = isNew && /^\d+$/.test(typed) && typed.length < 10 ? typed.padStart(10, '0') : typed;
     const isRename = !isNew && newCode !== editingCode;
     try {
       const body = {
