@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { getMe, generateAllPda } from '../api/client';
 import usePdaFilesDirty from '../hooks/usePdaFilesDirty';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import { clearPdaFilesDirty } from '../pdaDirty';
 import logo from '../assets/flexsystems-logo.png';
 import styles from './Layout.module.css';
@@ -42,6 +43,12 @@ export default function Layout() {
   const [pdaBusy, setPdaBusy] = useState(false);
   const [pdaResult, setPdaResult] = useState(null);
   const prevPathRef = useRef(location.pathname);
+
+  // <main> (below) is the one scrollable container for every page in the
+  // app -- restoring its position here, once, covers every list/report
+  // page's "back to the top" problem instead of wiring it into each page.
+  const mainRef = useRef(null);
+  useScrollRestoration(mainRef);
 
   useEffect(() => {
     const prevPath = prevPathRef.current;
@@ -130,7 +137,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className={styles.main}>
+      <main ref={mainRef} className={styles.main}>
         {showPdaOffer && (
           <div className={styles.pdaOffer}>
             <span className={styles.pdaOfferText}>

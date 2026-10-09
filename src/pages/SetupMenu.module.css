@@ -26,9 +26,9 @@
   background: #f0f2f8;
   border: 1px solid #c5c8ce;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: grab;
   text-align: left;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
 }
 
 .tile:hover {
@@ -38,6 +38,17 @@
 
 .tile:active {
   background: #c7d9ff;
+}
+
+.tile.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.tile.dragOver {
+  border-color: #3b6fe0;
+  border-style: dashed;
+  background: #eef3ff;
 }
 
 .tileTop {

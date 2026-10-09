@@ -4,6 +4,7 @@ import client, { getTransactions, getRoutes, getGuards, getAllQuestions, getCust
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
 import { downloadCsv } from '../utils/exportCsv';
+import usePrintLandscape from '../hooks/usePrintLandscape';
 import styles from './Report.module.css';
 
 const QA_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -296,6 +297,7 @@ function TransactionRows({ r, questionsById }) {
 }
 
 export default function TransactionReport() {
+  usePrintLandscape();
   const [routes, setRoutes] = useState([]);
   const [guards, setGuards] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -316,7 +318,7 @@ export default function TransactionReport() {
     d.setDate(d.getDate() - 30);
     return d.toISOString().slice(0, 10);
   });
-  const [toDate, setToDate] = useState('');
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingList, setLoadingList] = useState(false);
@@ -380,7 +382,7 @@ export default function TransactionReport() {
   useEffect(() => { if (!loading) runQuery(); }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function clearFilters() {
-    setRouteId(''); setGuard(''); setFromDate(''); setToDate('');
+    setRouteId(''); setGuard(''); setFromDate(''); setToDate(new Date().toISOString().slice(0, 10));
     setResultFilter(''); setAssetFilter(''); setMissedFilter(''); setPointFilter('');
     setFilterCategory(''); setFilterSubCategory('');
   }
@@ -471,8 +473,8 @@ export default function TransactionReport() {
   }
 
   return (
-    <div className={`${styles.page} ${styles.printLandscape}`}>
-      <ReportHeader title="Patrol Report" subtitle="Transaction history — filterable, click a column to sort" onExport={handleExport} />
+    <div className={styles.page}>
+      <ReportHeader title="Inspection Report" subtitle="Transaction history — filterable, click a column to sort" onExport={handleExport} />
       <div className={styles.meta}>Generated {now} — {sorted.length} of {rows.length} transactions</div>
 
       <div className={styles.filterBar}>

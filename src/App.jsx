@@ -16,6 +16,7 @@ import Incidents      from './pages/Incidents';
 import SopMaintenance from './pages/SopMaintenance';
 import SopMaintReport from './pages/SopMaintReport';
 import SetupPDA       from './pages/SetupPDA';
+import LotoTypeList   from './pages/LotoTypeList';
 import PdaEmulator    from './pages/PdaEmulator';
 import ImportPoints   from './pages/ImportPoints';
 import DeviceSetupCode from './pages/DeviceSetupCode';
@@ -31,6 +32,7 @@ import IncidentReport       from './pages/IncidentReport';
 import TransactionReport    from './pages/TransactionReport';
 import GpsMapReport         from './pages/GpsMapReport';
 import PerformanceMetricsReport from './pages/PerformanceMetricsReport';
+import LocationPerformanceReport from './pages/LocationPerformanceReport';
 import AdminTenants         from './pages/AdminTenants';
 import AuditLog             from './pages/AuditLog';
 import IntegrationApiTester from './pages/IntegrationApiTester';
@@ -69,6 +71,7 @@ export default function App() {
           <Route path="setup/incidents" element={<Incidents />} />
           <Route path="setup/sops" element={<SopMaintenance />} />
           <Route path="setup/pda"       element={<SetupPDA />} />
+          <Route path="setup/loto-types" element={<LotoTypeList />} />
           <Route path="setup/pda-emulator" element={<PdaEmulator />} />
           <Route path="setup/pda-emulator/:routeId/:pointId" element={<PdaEmulator />} />
           <Route path="setup/points/import" element={<ImportPoints />} />
@@ -93,6 +96,7 @@ export default function App() {
           <Route path="reports/transactions"        element={<TransactionReport />} />
           <Route path="reports/gps-map"             element={<GpsMapReport />} />
           <Route path="reports/performance"         element={<PerformanceMetricsReport />} />
+          <Route path="reports/location-performance" element={<LocationPerformanceReport />} />
 
           {/* Questions grid — routeId + pointId only (no siteId) */}
           <Route

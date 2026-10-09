@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion } from '../api/client';
+import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, getListFile } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import { markPdaFilesDirty } from '../pdaDirty';
 import styles from './Questions.module.css';
 
@@ -17,6 +18,7 @@ const TYPE_OPTIONS = [
   { value: '9',  label: '9 — CLONE JUMP' },
   { value: '10', label: '10 — SIGNATURE CAPTURE' },
   { value: '11', label: '11 — PHOTO' },
+  { value: '12', label: '12 — CHECKLIST' },
 ];
 
 // PickList "Type" field (Field8) — real data uses these two values.
@@ -50,6 +52,8 @@ function toForm(q) {
 export default function Questions() {
   const navigate = useNavigate();
   const { hasAnyEditAccess: editable } = useCanEditSite();
+  const listBoxRef = useRef(null);
+  useScrollRestoration(listBoxRef);
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState('');
@@ -68,6 +72,35 @@ export default function Questions() {
   // single question currently open in the detail form.
   const [selIds, setSelIds]     = useState(() => new Set());
   const [selAnchor, setSelAnchor] = useState(null);
+
+  // Lookup Name autosuggest -- reads the referenced list file's actual
+  // <LU ParentListID=..> groups so an admin can pick one instead of
+  // hand-typing it (a typo or casing slip here silently shows "No options
+  // found" on the device with no other hint why -- see LOTOCHECKLIST_
+  // ELECTRICAL). Only meaningful for a flat LookupType list (option3), not a
+  // TreeType rollup, which has no ParentListID groups to offer.
+  const [lookupNameOptions, setLookupNameOptions] = useState([]);
+  useEffect(() => {
+    const filename = form.option1.trim();
+    const isTree = form.option3 === 'TreeType';
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      if (cancelled) return;
+      if (!filename || isTree) { setLookupNameOptions([]); return; }
+      getListFile(filename)
+        .then(text => {
+          if (cancelled) return;
+          const doc = new DOMParser().parseFromString(text, 'application/xml');
+          if (doc.querySelector('parsererror')) { setLookupNameOptions([]); return; }
+          const ids = [...doc.getElementsByTagName('LU')]
+            .map(el => (el.getAttribute('ParentListID') || '').trim())
+            .filter(Boolean);
+          setLookupNameOptions([...new Set(ids)].sort((a, b) => a.localeCompare(b)));
+        })
+        .catch(() => { if (!cancelled) setLookupNameOptions([]); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [form.option1, form.option3]);
 
   function load() {
     setLoading(true);
@@ -158,7 +191,10 @@ export default function Questions() {
         subcategory:      form.subcategory.trim().toUpperCase(),
         option1:          form.option1.toUpperCase(),
         option2:          form.option2.toUpperCase(),
-        option3:          form.option3.toUpperCase(),
+        // CHECKLIST only ever reads a flat list (no TreeType drill-down --
+        // see the "Type" field note above), so this is forced regardless of
+        // whatever was left in option3 from a previous type.
+        option3:          form.question_type === '12' ? 'LookupType' : form.option3.toUpperCase(),
         option4:          form.option4.toUpperCase(),
         option5:          form.option5.toUpperCase(),
         // Real PDA answers arrive upper-cased, so a non-upper default_response
@@ -315,7 +351,7 @@ export default function Questions() {
               </select>
             </div>
           </div>
-          <div className={styles.listBox}>
+          <div className={styles.listBox} ref={listBoxRef}>
             {filtered.map((q, index) => (
               <div
                 key={q.id}
@@ -418,7 +454,7 @@ export default function Questions() {
                 </div>
               )}
 
-              {form.question_type === '8' && (
+              {(form.question_type === '8' || form.question_type === '12') && (
                 <div className={styles.formGrid}>
                   <div className={styles.formRow}>
                     <label className={styles.formLabel}>List File Name</label>
@@ -432,20 +468,47 @@ export default function Questions() {
                       placeholder="/LookupList or /Rollups/SiteRollup"
                       onChange={e => updateField('option2', e.target.value)} maxLength={50} />
                   </div>
-                  <div className={styles.formRow}>
-                    <label className={styles.formLabel}>Type</label>
-                    <select className={styles.formSelect} value={form.option3}
-                      onChange={e => updateField('option3', e.target.value)}>
-                      <option value="">—</option>
-                      {PICKLIST_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
+                  {form.question_type === '8' ? (
+                    <div className={styles.formRow}>
+                      <label className={styles.formLabel}>Type</label>
+                      <select className={styles.formSelect} value={form.option3}
+                        onChange={e => updateField('option3', e.target.value)}>
+                        <option value="">—</option>
+                        {PICKLIST_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    // CHECKLIST only ever reads a flat <LU> list (see
+                    // parseLookupListXml in the mobile app) -- it has no
+                    // TreeType drill-down support, so this is fixed rather
+                    // than offered as a choice.
+                    <div className={styles.formRow}>
+                      <label className={styles.formLabel}>Type</label>
+                      <input className={styles.formInput} value="LookupType" disabled />
+                    </div>
+                  )}
                   <div className={styles.formRow}>
                     <label className={styles.formLabel}>Lookup Name</label>
                     <input className={styles.formInput} value={form.option4}
                       placeholder="e.g. Fire Extinguisher (blank for rollups)"
-                      onChange={e => updateField('option4', e.target.value)} maxLength={50} />
+                      onChange={e => updateField('option4', e.target.value)} maxLength={50}
+                      list="lookupNameOptions" autoComplete="off" />
+                    <datalist id="lookupNameOptions">
+                      {lookupNameOptions.map(id => <option key={id} value={id} />)}
+                    </datalist>
+                    {form.option1.trim() && lookupNameOptions.length > 0 && (
+                      <div className={styles.formHint}>
+                        Groups found in {form.option1.trim().toUpperCase()}: {lookupNameOptions.join(', ')}
+                      </div>
+                    )}
                   </div>
+                  {form.question_type === '12' && (
+                    <div className={styles.formHint}>
+                      Each checklist item's default (expected) checked state is set via a
+                      <code>DefaultChecked="Y"</code> attribute on its <code>&lt;LU&gt;</code> entry
+                      in the list XML file itself, not here -- same as the list's items/labels.
+                    </div>
+                  )}
                 </div>
               )}
 

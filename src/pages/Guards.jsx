@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getGuards, createGuard, updateGuard, deleteGuard } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import { markPdaFilesDirty } from '../pdaDirty';
 import styles from './Questions.module.css';
 
@@ -30,6 +31,8 @@ function toForm(g) {
 export default function Guards() {
   const navigate = useNavigate();
   const { hasAnyEditAccess: editable } = useCanEditSite();
+  const listBoxRef = useRef(null);
+  useScrollRestoration(listBoxRef);
   const [rows, setRows]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState('');
@@ -189,7 +192,7 @@ export default function Guards() {
               </select>
             </div>
           </div>
-          <div className={styles.listBox}>
+          <div className={styles.listBox} ref={listBoxRef}>
             {filtered.map(g => (
               <div
                 key={g.id}

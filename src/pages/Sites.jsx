@@ -68,8 +68,13 @@ export default function Sites() {
   const sortedRows = useMemo(() => {
     // Incidents1 is a standalone system site (incident-only routes/points,
     // not a real patrolled site) -- hide it from a customer's site list,
-    // same as PdaEmulator.jsx's route picker already does.
-    const visible = customerId ? rows.filter(s => s.id !== 'Incidents1' && s.name !== 'Incidents1') : rows;
+    // same as PdaEmulator.jsx's route picker already does. PERSP00001
+    // (PerspectiveSite1) is the same kind of non-patrol reserved site, seen
+    // so far only on Frez N Store's tenant database -- not a real site a
+    // guard patrols, so hidden the same way.
+    const visible = customerId
+      ? rows.filter(s => !['Incidents1', 'PERSP00001'].includes(s.id) && !['Incidents1', 'PerspectiveSite1'].includes(s.name))
+      : rows;
     if (sortMode === 'code') {
       return [...visible].sort((a, b) => a.site_code.localeCompare(b.site_code));
     }

@@ -19,6 +19,7 @@ export const TYPE_LABEL = {
   '9': 'CLONE JUMP',
   '10': 'SIGNATURE',
   '11': 'PHOTO',
+  '12': 'CHECKLIST',
 };
 
 // Which jump slots are active for a question type, and their answer labels.
@@ -35,6 +36,8 @@ export const TYPE_LABEL = {
 //   9 CLONE JUMP         -> jump1 only, destination point code
 //   10 SIGNATURE         -> jump1 only
 //   11 PHOTO             -> jump1 only
+//   12 CHECKLIST         -> jump1 only (never blocks on item count -- see
+//                           handleChecklistDone in the mobile app)
 export function jumpLabels(question) {
   if (!question) return [null, null, null, null, null];
   const t = String(question.question_type ?? '');
@@ -56,6 +59,7 @@ export function jumpLabels(question) {
     case '9':  return ['DEST', null, null, null, null];
     case '10': return ['NEXT', null, null, null, null];
     case '11': return ['NEXT', null, null, null, null];
+    case '12': return ['NEXT', null, null, null, null];
     default:   return [null, null, null, null, null];
   }
 }

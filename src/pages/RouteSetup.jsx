@@ -1,10 +1,12 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import useScrollRestoration from '../hooks/useScrollRestoration';
 import {
   getSite, getCustomer,
   getRoutes, createRoute, updateRoute, deleteRoute,
-  getPoints, createPoint,
-  getRoutePoints, addPointToRoute, removePointFromRoute, getRoutePointQuestionCounts,
+  getPoints, createPoint, nextPointCode,
+  getRoutePoints, addPointToRoute, removePointFromRoute, updateRoutePoint, getRoutePointQuestionCounts,
+  copyRoutePointsAndQuestions,
 } from '../api/client';
 import Breadcrumb from '../components/Breadcrumb';
 import useCanEditSite from '../hooks/useCanEditSite';
@@ -72,6 +74,7 @@ export default function RouteSetup() {
   const [availAnchor, setAvailAnchor] = useState(null);            // last-clicked index, for shift-range
   const [selAlloc,    setSelAlloc]    = useState(() => new Set()); // selected allocated point ids
   const [allocAnchor, setAllocAnchor] = useState(null);
+  const [oosSaving,   setOosSaving]   = useState(false); // per-point Out-of-Service override, single-select only
 
   // ── new point form ─────────────────────────────────────────────────────────
   // tag_type isn't collected here -- every point in the real data is a
@@ -87,7 +90,19 @@ export default function RouteSetup() {
   const [newPointSaving, setNewPointSaving] = useState(false);
   const [newPointErr,   setNewPointErr]   = useState(null);
 
+  // ── copy points/questions from another route ─────────────────────────────
+  const [copySourceId, setCopySourceId] = useState('');
+  const [copying,      setCopying]      = useState(false);
+
   const [loading, setLoading] = useState(true);
+
+  // ── Scroll restoration (own list boxes, independent of <main>'s) ────────────
+  const routeListRef = useRef(null);
+  const availListRef = useRef(null);
+  const allocListRef = useRef(null);
+  useScrollRestoration(routeListRef, 'routes');
+  useScrollRestoration(availListRef, 'avail');
+  useScrollRestoration(allocListRef, 'alloc');
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -317,14 +332,35 @@ export default function RouteSetup() {
     }
   }
 
+  // value: null (inherit the route's own default), true, or false --
+  // overrides Requires_OOS for just this one point on this one route.
+  async function setPointOosOverride(pointId, value) {
+    if (!selRoute) return;
+    setOosSaving(true);
+    try {
+      const updated = await updateRoutePoint(selRoute.id, pointId, { requires_oos: value });
+      setAllocPoints(prev => prev.map(ap => ap.point_id === pointId ? { ...ap, requires_oos: updated.requires_oos } : ap));
+      markPdaFilesDirty();
+    } catch (ex) {
+      alert('Could not update Out-of-Service setting: ' + (ex.response?.data?.detail ?? ex.message));
+    } finally {
+      setOosSaving(false);
+    }
+  }
+
   // ── New point ────────────────────────────────────────────────────────────────
   function startNewPoint() {
     setAddingPoint(true);
-    setNewPointCode(
-      siteId === SOP_SITE_ID
-        ? nextCode(SOP_POINT_PREFIX, sitePoints, 'point_code', 9)
-        : ''
-    );
+    if (siteId === SOP_SITE_ID) {
+      setNewPointCode(nextCode(SOP_POINT_PREFIX, sitePoints, 'point_code', 9));
+    } else {
+      // Matches ImportPoints.jsx's "Add Point" form: point codes are a
+      // site-scoped numeric sequence, not derived from the description, so
+      // one fetch on open is enough -- still editable afterward if the
+      // admin wants to override it.
+      setNewPointCode('');
+      nextPointCode(siteId).then(setNewPointCode).catch(() => {});
+    }
     setNewPointDesc('');
     setNewPointLocation('');
     setNewPointCategory('');
@@ -366,6 +402,36 @@ export default function RouteSetup() {
       setNewPointErr(ex.response?.data?.detail ?? 'Create failed');
     } finally {
       setNewPointSaving(false);
+    }
+  }
+
+  // ── Copy points/questions from another route on this site ──────────────────
+  async function copyFromRoute() {
+    if (!copySourceId || !selRoute) return;
+    const source = routes.find(r => r.id === copySourceId);
+    if (!confirm(
+      `Copy all points and questions from "${source?.name}" onto "${selRoute.name}"?\n\n` +
+      `Points already on this route are left as-is -- only points not already here are added.`
+    )) return;
+    setCopying(true);
+    try {
+      const result = await copyRoutePointsAndQuestions(selRoute.id, copySourceId);
+      const [alloc, counts] = await Promise.all([
+        getRoutePoints(selRoute.id),
+        getRoutePointQuestionCounts(selRoute.id).catch(() => ({})),
+      ]);
+      setAllocPoints(alloc);
+      setQuestionCounts(counts);
+      setCopySourceId('');
+      markPdaFilesDirty();
+      alert(
+        `Copied ${result.points_copied} point(s) and ${result.questions_copied} question(s) from "${source?.name}".` +
+        (result.points_skipped ? ` ${result.points_skipped} point(s) already on this route were skipped.` : '')
+      );
+    } catch (ex) {
+      alert('Copy failed: ' + (ex.response?.data?.detail ?? ex.message));
+    } finally {
+      setCopying(false);
     }
   }
 
@@ -429,7 +495,7 @@ export default function RouteSetup() {
               </select>
             </div>
           </div>
-          <div className={styles.listBox}>
+          <div className={styles.listBox} ref={routeListRef}>
             {sortedRoutes.map(r => (
               <div
                 key={r.id}
@@ -494,7 +560,7 @@ export default function RouteSetup() {
                 </label>
               </div>
               <div className={styles.formRow}>
-                <label className={styles.formLabel}>Out-of-Service</label>
+                <label className={styles.formLabel}>Out-of-Service (route default)</label>
                 <label className={styles.checkLabel}>
                   <input
                     type="checkbox"
@@ -504,6 +570,9 @@ export default function RouteSetup() {
                   />
                   Require confirmation that a failed item was removed from service
                 </label>
+                <span className={styles.formHint}>
+                  Applies to every point on this route unless overridden for a specific point below.
+                </span>
               </div>
               {formErr && <div className={styles.formErr}>{formErr}</div>}
               <div className={styles.formActions}>
@@ -542,6 +611,30 @@ export default function RouteSetup() {
             <div className={styles.pointsSection}>
               <div className={styles.pointsHeader}>
                 <span>Points — {selRoute.name}</span>
+                {editable && (
+                  <div className={styles.sortRow}>
+                    <span className={styles.sortLabel}>Copy From</span>
+                    <select
+                      className={styles.sortSelect}
+                      value={copySourceId}
+                      onChange={e => setCopySourceId(e.target.value)}
+                      disabled={copying}
+                    >
+                      <option value="">Select a route…</option>
+                      {routes.filter(r => r.id !== selRoute.id).map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      className={styles.newPointBtn}
+                      onClick={copyFromRoute}
+                      disabled={!copySourceId || copying}
+                      title="Copy points and questions from the selected route onto this one"
+                    >
+                      {copying ? '…' : 'Copy Points & Questions'}
+                    </button>
+                  </div>
+                )}
                 <div className={styles.sortRow}>
                   <span className={styles.sortLabel}>Category</span>
                   <select
@@ -597,7 +690,7 @@ export default function RouteSetup() {
                         className={styles.newPointInput}
                         value={newPointCode}
                         onChange={e => setNewPointCode(e.target.value)}
-                        placeholder="Point code"
+                        placeholder="auto-generated"
                         maxLength={10}
                       />
                       <input
@@ -651,7 +744,7 @@ export default function RouteSetup() {
                     </div>
                   )}
 
-                  <div className={styles.listBox}>
+                  <div className={styles.listBox} ref={availListRef}>
                     {sortedAvailPoints.map((p, i) => (
                       <div
                         key={p.id}
@@ -699,27 +792,51 @@ export default function RouteSetup() {
                     </span>
                     {selAlloc.size > 1 && <span className={styles.selCount}> — {selAlloc.size} selected</span>}
                   </div>
-                  <div className={styles.listBox}>
-                    {sortedAllocPoints.map((ap, i) => (
-                      <div
-                        key={ap.point_id}
-                        className={`${styles.listItem} ${selAlloc.has(ap.point_id) ? styles.selected : ''}`}
-                        onClick={e => clickAlloc(ap, i, e)}
-                        onDoubleClick={() => openQuestions(ap.point_id)}
-                        title="Double-click to open questions"
-                      >
-                        <span className={styles.pointCode}>{ap.point?.point_code}</span>
-                        <span className={styles.pointDesc}>{ap.point?.description}</span>
-                        {questionCounts[ap.point_id] > 0 && (
-                          <span
-                            className={styles.qBadge}
-                            title={`${questionCounts[ap.point_id]} question${questionCounts[ap.point_id] === 1 ? '' : 's'} assigned`}
+                  <div className={styles.listBox} ref={allocListRef}>
+                    {sortedAllocPoints.map((ap, i) => {
+                      const hasOverride = ap.requires_oos !== null && ap.requires_oos !== undefined;
+                      // Effective value shown/checked: this point's own
+                      // override if it has one, else the route's default.
+                      const effectiveOos = hasOverride ? ap.requires_oos : formRequiresOos;
+                      return (
+                        <div
+                          key={ap.point_id}
+                          className={`${styles.listItem} ${selAlloc.has(ap.point_id) ? styles.selected : ''}`}
+                          onClick={e => clickAlloc(ap, i, e)}
+                          onDoubleClick={() => openQuestions(ap.point_id)}
+                          title="Double-click to open questions"
+                        >
+                          <span className={styles.pointCode}>{ap.point?.point_code}</span>
+                          <span className={styles.pointDesc}>{ap.point?.description}</span>
+                          {questionCounts[ap.point_id] > 0 && (
+                            <span
+                              className={styles.qBadge}
+                              title={`${questionCounts[ap.point_id]} question${questionCounts[ap.point_id] === 1 ? '' : 's'} assigned`}
+                            >
+                              {questionCounts[ap.point_id]} Q
+                            </span>
+                          )}
+                          <label
+                            className={styles.oosCheckLabel}
+                            style={{ float: 'right', marginRight: 8 }}
+                            onClick={e => e.stopPropagation()}
+                            title={
+                              hasOverride
+                                ? `Out-of-Service: overridden ${effectiveOos ? 'ON' : 'OFF'} for this point`
+                                : `Out-of-Service: inherited from route default (currently ${effectiveOos ? 'ON' : 'OFF'})`
+                            }
                           >
-                            {questionCounts[ap.point_id]} Q
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                            <input
+                              type="checkbox"
+                              checked={effectiveOos}
+                              disabled={!editable || oosSaving}
+                              onChange={e => setPointOosOverride(ap.point_id, e.target.checked)}
+                            />
+                            {' '}OOS
+                          </label>
+                        </div>
+                      );
+                    })}
                     {allocPoints.length === 0 && (
                       <div className={styles.empty}>No points assigned to this route</div>
                     )}

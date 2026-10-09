@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, useMemo } from 'react';
 import client, { getLastDownload, getRoutes, getGuards, getAllQuestions, getCustomers, getSites, getPoints } from '../api/client';
 import ReportHeader from '../components/ReportHeader';
 import ReportFooter from '../components/ReportFooter';
+import usePrintLandscape from '../hooks/usePrintLandscape';
 import styles from './Report.module.css';
 
 const QA_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -288,6 +289,7 @@ function TransactionRows({ r, questionsById }) {
 }
 
 export default function Transactions() {
+  usePrintLandscape();
   const [rows, setRows] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [guards, setGuards] = useState([]);
@@ -410,7 +412,7 @@ export default function Transactions() {
   const now = new Date().toLocaleString();
 
   return (
-    <div className={`${styles.page} ${styles.printLandscape}`}>
+    <div className={styles.page}>
       <ReportHeader title="Last PDA Download" subtitle="Most recent PDA sync batch — filterable, click a column to sort" />
       <div className={styles.meta}>Generated {now} — {sorted.length} of {rows.length} transactions</div>
 

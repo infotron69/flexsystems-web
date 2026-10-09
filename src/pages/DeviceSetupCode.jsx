@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { getDeviceSetupConfig, updateDeviceSetupConfig } from '../api/client';
 import styles from './DeviceSetupCode.module.css';
 
 // Mirrors exactly the shape FlexPatrol Mobile's UPDATE_SETTINGS action (and
@@ -30,6 +31,68 @@ const emptyForm = {
 // tenant/device for now -- rotating it means shipping a new app build, not
 // anything changeable from here.
 const EDIT_UNLOCK_TOKEN = 'FlexPatrol2026Edit';
+
+// Persisted per-tenant (not globally) -- this browser may be used to log
+// into more than one tenant, and each tenant's FTP host/credentials are
+// unrelated; keying by the bare storage name would leak one tenant's PDA
+// settings into another's session. Already the same trust level as the QR
+// code itself: the form's own hint below already warns the FTP password is
+// embedded in that code as plain text, so persisting it locally here isn't
+// a new exposure.
+const STORAGE_KEY_PREFIX = 'deviceSetupCodeForm';
+
+function loadSavedForm() {
+  try {
+    const tenant = localStorage.getItem('tenant') || '';
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}:${tenant}`);
+    if (!raw) return emptyForm;
+    return { ...emptyForm, ...JSON.parse(raw) };
+  } catch {
+    return emptyForm;
+  }
+}
+
+// The server stores this tenant-wide (see app.device_setup on the backend)
+// in the same snake_case shape every other endpoint here uses -- separate
+// from buildPayload() below, which builds the camelCase shape the MOBILE
+// APP itself expects inside the actual QR code and must never change.
+function toServerConfig(form) {
+  return {
+    gps_enabled: form.gpsEnabled,
+    auto_sync_on_end_route: form.autoSyncOnEndRoute,
+    camera_enabled: form.cameraEnabled,
+    scanning_types: form.scanningTypes,
+    // host/localHost are hostnames or IPs -- case-insensitive, so this
+    // matches the visual all-caps every other text input in this app
+    // already shows (see index.css). user/password/uploadPath/downloadPath
+    // are real FTP credentials and Unix-style paths -- both are genuinely
+    // case-sensitive on a real FTP server, so those are saved exactly as
+    // typed, the same exception already made for Question.mask/file_name.
+    host: form.host.trim().toUpperCase(),
+    local_host: form.localHost.trim().toUpperCase(),
+    port: form.port,
+    user: form.user,
+    password: form.password,
+    upload_path: form.uploadPath,
+    download_path: form.downloadPath,
+  };
+}
+
+function fromServerConfig(cfg) {
+  return {
+    gpsEnabled: cfg.gps_enabled,
+    autoSyncOnEndRoute: cfg.auto_sync_on_end_route,
+    cameraEnabled: cfg.camera_enabled,
+    scanningTypes: cfg.scanning_types,
+    host: cfg.host,
+    localHost: cfg.local_host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    uploadPath: cfg.upload_path,
+    downloadPath: cfg.download_path,
+  };
+}
 
 const SCANNING_TYPES = [
   { value: 'camera', label: 'Phone Camera' },
@@ -63,8 +126,12 @@ function buildPayload(form) {
     // (camera, wedge hardware, or NFC) is accepted at a checkpoint.
     manualEntryEnabled: form.scanningTypes.includes('manual'),
     ftpSettings: {
-      host: form.host.trim(),
-      localHost: form.localHost.trim(),
+      // Same split as toServerConfig above: host/localHost are case-
+      // insensitive hostnames/IPs, safe to normalize; user/password/the two
+      // paths are real, case-sensitive FTP credentials and Unix-style paths
+      // -- forcing those to caps could break a real login or directory.
+      host: form.host.trim().toUpperCase(),
+      localHost: form.localHost.trim().toUpperCase(),
       port: parseInt(form.port, 10) || 21,
       user: form.user.trim(),
       password: form.password,
@@ -75,15 +142,71 @@ function buildPayload(form) {
 }
 
 export default function DeviceSetupCode() {
-  const [form, setForm] = useState(emptyForm);
+  const tenantLabel = localStorage.getItem('tenantLabel');
+  const [form, setForm] = useState(loadSavedForm);
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [unlockQrDataUrl, setUnlockQrDataUrl] = useState(null);
   const [unlockErr, setUnlockErr] = useState(null);
   const [err, setErr] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error
+
+  // The tenant this instance of the page loaded for, captured once at mount
+  // -- compared against localStorage.tenant below to catch a login in
+  // ANOTHER browser tab switching the active tenant out from under this one.
+  // Without this, Generate QR Code would PUT this page's (now-stale, wrong-
+  // tenant) form straight into whichever tenant the OTHER tab just logged
+  // into, silently overwriting that tenant's real FTP credentials with
+  // this one's -- confirmed happening for real, not just theoretical (see
+  // the admin-reported "device setup codes not saving").
+  const [mountTenant] = useState(() => localStorage.getItem('tenant') || '');
+  const [tenantChangedElsewhere, setTenantChangedElsewhere] = useState(false);
+
+  // The native "storage" event only fires in OTHER tabs/windows of the same
+  // origin, never the tab that made the change itself -- exactly the signal
+  // needed here, since a same-tab tenant switch already goes through a full
+  // remount (a fresh login navigates to "/", unmounting this page) and
+  // isn't a risk the way a second tab silently changing out from under this
+  // one is.
+  useEffect(() => {
+    function handleStorage(e) {
+      if (e.key === 'tenant' && e.newValue !== mountTenant) {
+        setTenantChangedElsewhere(true);
+      }
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [mountTenant]);
+
+  // The server (per-tenant, see app.device_setup) is now the source of
+  // truth -- it's what makes "saved" mean anything beyond this one browser.
+  // localStorage stays as a same-browser fallback: if this tenant hasn't
+  // saved anything server-side yet (a first-ever visit, or before this
+  // feature existed), whatever was already local carries forward instead of
+  // resetting to the hardcoded demo defaults.
+  useEffect(() => {
+    getDeviceSetupConfig()
+      .then(cfg => { if (cfg) setForm(prev => ({ ...prev, ...fromServerConfig(cfg) })); })
+      .catch(() => {});
+  }, []);
+
+  // Keeps the form's values across leaving/returning to this page (and a
+  // full reload) instead of resetting to the hardcoded demo defaults every
+  // time -- an admin setting up several real devices in a row shouldn't
+  // have to retype the same FTP host/credentials each visit.
+  useEffect(() => {
+    try {
+      const tenant = localStorage.getItem('tenant') || '';
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}:${tenant}`, JSON.stringify(form));
+    } catch {
+      // Storage full/unavailable (private browsing, quota) -- not worth
+      // surfacing an error for a convenience feature.
+    }
+  }, [form]);
 
   function updateField(key, value) {
     setForm(prev => ({ ...prev, [key]: value }));
     setQrDataUrl(null);
+    setSaveStatus('idle');
   }
 
   function toggleScanningType(value) {
@@ -94,18 +217,75 @@ export default function DeviceSetupCode() {
         : [...prev.scanningTypes, value],
     }));
     setQrDataUrl(null);
+    setSaveStatus('idle');
   }
 
   function generateQr() {
     setErr(null);
+    if (tenantChangedElsewhere) {
+      setErr('The active tenant changed in another tab. Reload this page before saving, so you don’t overwrite the wrong tenant’s settings.');
+      return;
+    }
     if (!form.host.trim()) {
       setErr('Remote Host is required.');
       return;
     }
     const payload = JSON.stringify(buildPayload(form));
-    QRCode.toDataURL(payload, { width: 360, margin: 2 })
+    // 720px source, shown at 300px: stays crisp when saved or printed large.
+    QRCode.toDataURL(payload, { width: 720, margin: 2 })
       .then(setQrDataUrl)
       .catch(ex => setErr('Could not generate QR code: ' + ex.message));
+
+    // Saved per-tenant server-side every time a code is generated, so any
+    // admin on any browser sees the same last-generated setup the next time
+    // they open this page -- not just whoever's browser happened to type it.
+    setSaveStatus('saving');
+    updateDeviceSetupConfig(toServerConfig(form))
+      .then(() => setSaveStatus('saved'))
+      .catch(() => setSaveStatus('error'));
+  }
+
+  // Saves the QR as a PNG with the company name under it, matching what's
+  // shown on screen.
+  function saveQrImage() {
+    if (!qrDataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const labelH = tenantLabel ? 90 : 0;
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height + labelH;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      if (tenantLabel) {
+        let size = 44;
+        ctx.font = `bold ${size}px sans-serif`;
+        while (size > 18 && ctx.measureText(tenantLabel).width > canvas.width - 40) {
+          size -= 2;
+          ctx.font = `bold ${size}px sans-serif`;
+        }
+        ctx.fillStyle = '#1a2332';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tenantLabel, canvas.width / 2, img.height + labelH / 2 - 10);
+      }
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = `${localStorage.getItem('tenant') || 'tenant'}-device-setup-code.png`;
+      a.click();
+    };
+    img.src = qrDataUrl;
+  }
+
+  // Print dialog -> "Save as PDF". The tab title becomes the default PDF
+  // filename, so set it for the duration of the dialog.
+  function printCode() {
+    const prev = document.title;
+    document.title = `Device Setup Code - ${tenantLabel || localStorage.getItem('tenant') || ''}`;
+    window.print();
+    document.title = prev;
   }
 
   function generateUnlockQr() {
@@ -119,12 +299,21 @@ export default function DeviceSetupCode() {
   return (
     <div className={styles.page}>
       <h2 className={styles.heading}>Device Setup Code</h2>
-      <p className={styles.subheading}>
+      <p className={`${styles.subheading} ${styles.noPrint}`}>
         Generates a QR code that configures a FlexPatrol Mobile device in one scan — FTP server details plus the GPS, camera, and barcode-scanning settings. The app has no manual settings screen; this is the only way to configure a device.
       </p>
 
+      {tenantChangedElsewhere && (
+        <div className={`${styles.formErr} ${styles.noPrint}`} style={{ marginBottom: 16 }}>
+          You signed into a different tenant in another tab. Saving here is disabled until you{' '}
+          <button type="button" onClick={() => window.location.reload()} style={{ textDecoration: 'underline', border: 'none', background: 'none', color: 'inherit', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+            reload this page
+          </button>.
+        </div>
+      )}
+
       <div className={styles.layout}>
-        <div className={styles.form}>
+        <div className={`${styles.form} ${styles.noPrint}`}>
           {err && <div className={styles.formErr}>{err}</div>}
 
           <div className={styles.formRow}>
@@ -141,7 +330,7 @@ export default function DeviceSetupCode() {
           </div>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Username</label>
-            <input className={styles.formInput} value={form.user} onChange={e => updateField('user', e.target.value)} placeholder="ftpuser" />
+            <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} value={form.user} onChange={e => updateField('user', e.target.value)} placeholder="ftpuser" />
           </div>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Password</label>
@@ -149,11 +338,11 @@ export default function DeviceSetupCode() {
           </div>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Upload Path</label>
-            <input className={styles.formInput} value={form.uploadPath} onChange={e => updateField('uploadPath', e.target.value)} />
+            <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} value={form.uploadPath} onChange={e => updateField('uploadPath', e.target.value)} />
           </div>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Download Path</label>
-            <input className={styles.formInput} value={form.downloadPath} onChange={e => updateField('downloadPath', e.target.value)} />
+            <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} value={form.downloadPath} onChange={e => updateField('downloadPath', e.target.value)} />
           </div>
 
           <div className={styles.formRow}>
@@ -192,6 +381,9 @@ export default function DeviceSetupCode() {
 
           <div className={styles.formActions}>
             <button className={styles.saveBtn} onClick={generateQr}>Generate QR Code</button>
+            {saveStatus === 'saving' && <span className={styles.formHint}>Saving…</span>}
+            {saveStatus === 'saved' && <span className={styles.saveOkNote}>✓ Saved for this tenant</span>}
+            {saveStatus === 'error' && <span className={styles.formErr}>Could not save — the code above still works, but won't be there next visit.</span>}
           </div>
           <p className={styles.formHint}>
             The FTP password is embedded in the generated code as plain text — treat a printed or displayed code the same as you would the password itself.
@@ -202,7 +394,13 @@ export default function DeviceSetupCode() {
           {qrDataUrl ? (
             <>
               <img src={qrDataUrl} alt="Device setup QR code" className={styles.qrImage} />
+              {tenantLabel && <p className={styles.qrCompanyName}>{tenantLabel}</p>}
               <p className={styles.formHint}>Scan with FlexPatrol Mobile's "Scan Setup Code" button on the Main screen.</p>
+              <p className={styles.printOnly}>This code contains the FTP login — keep it secure.</p>
+              <div className={`${styles.qrActions} ${styles.noPrint}`}>
+                <button className={styles.saveBtn} onClick={saveQrImage}>Save QR Image</button>
+                <button className={styles.printBtn} onClick={printCode}>Print / Save as PDF</button>
+              </div>
             </>
           ) : (
             <p className={styles.qrPlaceholder}>Fill in the form and click Generate to preview the code here.</p>
@@ -210,6 +408,7 @@ export default function DeviceSetupCode() {
         </div>
       </div>
 
+      <div className={styles.noPrint}>
       <h2 className={styles.heading} style={{ marginTop: 32 }}>Edit-Unlock Code</h2>
       <p className={styles.subheading}>
         A device's FTP settings are normally read-only on-screen -- this generates the separate QR code that unlocks the "EDIT" button on the Device Setup screen for that visit only. Anyone who scans it can change that device's FTP host/credentials on the spot, so treat it with the same care as an admin password.
@@ -235,6 +434,7 @@ export default function DeviceSetupCode() {
             <p className={styles.qrPlaceholder}>Click Generate to preview the edit-unlock code here.</p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

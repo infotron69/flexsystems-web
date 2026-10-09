@@ -1,6 +1,30 @@
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useCanEditSite from '../hooks/useCanEditSite';
 import styles from './SetupMenu.module.css';
+
+// Drag-and-drop tile order -- not tenant-scoped (unlike DeviceSetupCode's
+// saved FTP settings) since it's just this browser's personal arrangement
+// of the menu, not tenant-specific data that could leak across logins.
+const ORDER_STORAGE_KEY = 'setupMenuOrder';
+
+function loadSavedOrder() {
+  try {
+    const raw = localStorage.getItem(ORDER_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOrder(order) {
+  try {
+    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order));
+  } catch {
+    // Storage full/unavailable -- not worth surfacing an error for a
+    // convenience feature; the tiles just fall back to default order.
+  }
+}
 
 // gate: 'any' -- badge shows when the user has no edit rights on any site at
 // all (mirrors each screen's own backend check); undefined -- never badged
@@ -41,30 +65,99 @@ const INTEGRATION_TESTER_ITEM = { label: 'Integration API Tester', sub: 'Test SC
 // user can't seed test data into their own live numbers.
 const PDA_EMULATOR_ITEM = { label: 'PDA Emulator', sub: 'Walk a route/checklist like a real device, without a PDA', to: '/setup/pda-emulator' };
 
+// Editing a shared lookup-list file writes to every configured site's
+// ListFiles folder at once, with no per-site edit-scope check on the way in
+// (unlike Route/Point/Question edits, which are all scoped to the caller's
+// own sites) -- the backend enforces admin-only on the save endpoint too
+// (require_unrestricted on PUT /pda/listfile), this just keeps the tile from
+// appearing where it'd only 403 for a site-restricted user.
+const LOTO_TYPES_ITEM = { label: 'LOTO Type List', sub: 'Lockout/Tagout type values for a PICKLIST/CHECKLIST question', to: '/setup/loto-types' };
+
 export default function SetupMenu() {
   const navigate = useNavigate();
   const { me, unrestricted, hasAnyEditAccess } = useCanEditSite();
   const showAdminOnly = !me || unrestricted; // optimistic while loading; hides only once confirmed restricted
-  let items = localStorage.getItem('tenant') === 'flex' && showAdminOnly ? [...ITEMS, ADMIN_ITEM] : ITEMS;
-  if (showAdminOnly) items = [...items.slice(0, 2), USER_SETUP_ITEM, ...items.slice(2), PDA_EMULATOR_ITEM, INTEGRATION_TESTER_ITEM];
+  const isFlexTenant = localStorage.getItem('tenant') === 'flex';
+  const items = useMemo(() => {
+    let list = isFlexTenant && showAdminOnly ? [...ITEMS, ADMIN_ITEM] : ITEMS;
+    if (showAdminOnly) list = [...list.slice(0, 2), USER_SETUP_ITEM, ...list.slice(2), PDA_EMULATOR_ITEM, INTEGRATION_TESTER_ITEM, LOTO_TYPES_ITEM];
+    return list;
+  }, [isFlexTenant, showAdminOnly]);
+
+  const [order, setOrder] = useState(loadSavedOrder);
+
+  // Applies the saved drag order on top of `items` -- tiles named in `order`
+  // come first in that sequence (skipping any no longer present, e.g. an
+  // admin-only tile that disappeared for a now-restricted account), then
+  // anything not yet in `order` (a tile added since the order was last
+  // saved) is appended in its normal default-array position.
+  const orderedItems = useMemo(() => {
+    const byTo = new Map(items.map(item => [item.to, item]));
+    const known = order.map(to => byTo.get(to)).filter(Boolean);
+    const knownTos = new Set(known.map(item => item.to));
+    const rest = items.filter(item => !knownTos.has(item.to));
+    return [...known, ...rest];
+  }, [items, order]);
+
+  const [dragIndex, setDragIndex] = useState(null);
+  const [overIndex, setOverIndex] = useState(null);
+  const draggedRef = useRef(false); // suppresses the click navigation that follows a drop
+
+  function handleDrop(dropIndex) {
+    if (dragIndex === null || dragIndex === dropIndex) return;
+    const next = [...orderedItems];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(dropIndex, 0, moved);
+    const nextOrder = next.map(item => item.to);
+    setOrder(nextOrder);
+    saveOrder(nextOrder);
+  }
+
   return (
     <div className={styles.page}>
       <h2 className={styles.heading}>System Configuration</h2>
       <div className={styles.grid}>
-        {items.map(item => {
+        {orderedItems.map((item, i) => {
           const viewOnly = item.gate === 'any' && me && !hasAnyEditAccess;
           return (
-            <button
+            <div
               key={item.to}
-              className={styles.tile}
-              onClick={() => navigate(item.to)}
+              role="button"
+              tabIndex={0}
+              className={[
+                styles.tile,
+                dragIndex === i ? styles.dragging : '',
+                overIndex === i && dragIndex !== i ? styles.dragOver : '',
+              ].filter(Boolean).join(' ')}
+              draggable
+              onDragStart={() => { setDragIndex(i); draggedRef.current = true; }}
+              onDragOver={e => { e.preventDefault(); if (overIndex !== i) setOverIndex(i); }}
+              onDragLeave={() => setOverIndex(prev => (prev === i ? null : prev))}
+              onDrop={e => { e.preventDefault(); handleDrop(i); setDragIndex(null); setOverIndex(null); }}
+              onDragEnd={() => {
+                setDragIndex(null);
+                setOverIndex(null);
+                // Real drags don't fire a click event afterward, so there's
+                // nothing here to suppress in practice -- but a drag that
+                // got cancelled a few pixels in (some browsers/trackpads do
+                // fire click for that) shouldn't be read as "open this
+                // tile" either. Cleared on a short delay rather than
+                // immediately so a click event already in flight still sees
+                // it as true.
+                setTimeout(() => { draggedRef.current = false; }, 0);
+              }}
+              onClick={() => {
+                if (draggedRef.current) return;
+                navigate(item.to);
+              }}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate(item.to); }}
             >
               <span className={styles.tileTop}>
                 <span className={styles.tileLabel}>{item.label}</span>
                 {viewOnly && <span className={styles.viewOnlyBadge}>View only</span>}
               </span>
               <span className={styles.tileSub}>{item.sub}</span>
-            </button>
+            </div>
           );
         })}
       </div>

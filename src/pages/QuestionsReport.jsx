@@ -8,7 +8,7 @@ import styles from './Report.module.css';
 const TYPE_LABEL = {
   '1': 'YES/NO', '2': 'MULTICHOICE', '3': 'ALPHA/NUM', '4': 'LOW/NORMAL/HIGH',
   '5': 'MULTISELECT', '6': 'SHOWFILE', '7': 'ASSET SCAN', '8': 'PICKLIST',
-  '9': 'CLONE JUMP', '10': 'SIGNATURE', '11': 'PHOTO',
+  '9': 'CLONE JUMP', '10': 'SIGNATURE', '11': 'PHOTO', '12': 'CHECKLIST',
 };
 
 export default function QuestionsReport() {
