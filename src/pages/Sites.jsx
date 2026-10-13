@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getSites, getCustomer, createSite, updateSite, deleteSite } from '../api/client';
+import { getSites, getCustomer, createSite, updateSite, deleteSite, nextSiteCode } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
 import { markPdaFilesDirty } from '../pdaDirty';
 import Breadcrumb from '../components/Breadcrumb';
@@ -86,6 +86,10 @@ export default function Sites() {
     setForm(emptyForm);
     setErr(null);
     setShowForm(true);
+    // Still editable afterward, same as a new point's code.
+    nextSiteCode()
+      .then(code => setForm(prev => prev.site_code ? prev : { ...prev, site_code: code }))
+      .catch(() => {});
   }
 
   function startEdit(site, e) {
@@ -184,7 +188,7 @@ export default function Sites() {
             <div className={formStyles.formRow}>
               <label className={formStyles.formLabel}>Site Code</label>
               <input className={formStyles.formInput} value={form.site_code} maxLength={10}
-                onChange={e => updateField('site_code', e.target.value)} placeholder="e.g. 0000000002"
+                onChange={e => updateField('site_code', e.target.value)} placeholder="auto-generated"
                 disabled={!!editingId} title={editingId ? 'Site code cannot be changed after creation' : undefined} />
             </div>
             <div className={formStyles.formRow}>
