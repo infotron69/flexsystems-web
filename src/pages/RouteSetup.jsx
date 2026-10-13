@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import useScrollRestoration from '../hooks/useScrollRestoration';
 import {
   getSite, getCustomer,
-  getRoutes, createRoute, updateRoute, deleteRoute,
+  getRoutes, createRoute, updateRoute, deleteRoute, nextRouteCode,
   getPoints, createPoint, nextPointCode,
   getRoutePoints, addPointToRoute, removePointFromRoute, updateRoutePoint, getRoutePointQuestionCounts,
   copyRoutePointsAndQuestions,
@@ -258,7 +258,9 @@ export default function RouteSetup() {
     setSelRoute(null);
     setIsNew(true);
     setFormName('');
-    setFormCode(nextCode('R', routes, 'route_code'));
+    setFormCode('');
+    // Next ID in the 10-digit sequence, still editable afterward.
+    nextRouteCode().then(code => setFormCode(prev => prev || code)).catch(() => {});
     setFormTemplate(false);
     setFormRequiresOos(false);
     setFormErr(null);

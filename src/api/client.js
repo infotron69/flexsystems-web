@@ -86,6 +86,7 @@ export const deleteCustomer  = (id)        => client.delete(`/customers/${id}`);
 export const getSites    = (params) => client.get('/sites', { params }).then(r => r.data);
 export const getSite     = (id)     => client.get(`/sites/${id}`).then(r => r.data);
 export const createSite  = (body)     => client.post('/sites', body).then(r => r.data);
+export const nextSiteCode = () => client.get('/sites/next-site-code').then(r => r.data.code);
 export const updateSite  = (id, body) => client.patch(`/sites/${id}`, body).then(r => r.data);
 export const deleteSite  = (id)       => client.delete(`/sites/${id}`);
 
@@ -95,6 +96,7 @@ export const deleteSite  = (id)       => client.delete(`/sites/${id}`);
 export const getRoutes   = (params)   => client.get('/routes', { params }).then(r => r.data);
 export const getRoute    = (id)       => client.get(`/routes/${id}`).then(r => r.data);
 export const createRoute = (body)     => client.post('/routes', body).then(r => r.data);
+export const nextRouteCode = () => client.get('/routes/next-route-code').then(r => r.data.code);
 export const updateRoute = (id, body) => client.patch(`/routes/${id}`, body).then(r => r.data);
 export const deleteRoute = (id)       => client.delete(`/routes/${id}`);
 
