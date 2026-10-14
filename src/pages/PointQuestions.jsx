@@ -442,7 +442,7 @@ export default function PointQuestions() {
           <button className={styles.backBtn} onClick={openFlowChart} disabled={!currentList.length}>
             ⚭ Flow Chart
           </button>
-          <button className={styles.backBtn} onClick={() => navigate('/setup/questions')}>
+          <button className={styles.backBtn} onClick={() => navigate('/setup/questions', { state: { backTo: `/setup/routes/${routeId}/points/${pointId}/questions`, backLabel: 'Point Questions' } })}>
             Questions →
           </button>
           <button className={styles.backBtn} onClick={() => navigate('/setup/reports/route-questions')}>

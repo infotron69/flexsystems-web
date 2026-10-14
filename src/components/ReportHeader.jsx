@@ -1,9 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import logo from '../assets/flexsystems-logo.png';
 import styles from '../pages/Report.module.css';
 
-export default function ReportHeader({ title, subtitle, backTo = '/reports', onExport, onBeforePrint }) {
-  const navigate = useNavigate();
+// Back lives in the screen-level BackButton (see navigation.js), not here.
+export default function ReportHeader({ title, subtitle, onExport, onBeforePrint }) {
   // The logged-in tenant's company name -- what the Dashboard shows beside
   // its title -- so every report, printed or saved as PDF, says whose data it is.
   const customerName = localStorage.getItem('tenantLabel');
@@ -27,7 +26,6 @@ export default function ReportHeader({ title, subtitle, backTo = '/reports', onE
         <span className={styles.subheading}>{subtitle}</span>
       </div>
       <div className={styles.headerActions}>
-        <button className={styles.backBtn} onClick={() => navigate(backTo)}>← Reports</button>
         {onExport && <button className={styles.exportBtn} onClick={onExport}>Export CSV</button>}
         <button className={styles.printBtn} onClick={handlePrint}>Print</button>
       </div>

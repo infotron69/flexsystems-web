@@ -148,9 +148,8 @@ export default function SopMaintenance() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate('/setup/incidents')}>← Incidents</button>
         <h2 className={styles.heading}>SOP Maintenance</h2>
-        <button className={styles.questionsBtn} style={{ marginLeft: 'auto' }} onClick={() => navigate('/setup/questions')}>
+        <button className={styles.questionsBtn} style={{ marginLeft: 'auto' }} onClick={() => navigate('/setup/questions', { state: { backTo: '/setup/sops', backLabel: 'SOP Maintenance' } })}>
           Questions →
         </button>
         <button className={styles.questionsBtn} onClick={() => navigate('/setup/reports/sops')}>
