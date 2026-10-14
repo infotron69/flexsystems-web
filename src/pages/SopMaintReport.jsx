@@ -541,7 +541,10 @@ export default function SopMaintReport() {
                     This checklist is large — the diagram stops at {flowResult.graph.nodes.length} steps.
                   </div>
                 )}
-                <MermaidDiagram definition={graphToMermaid(flowResult.graph)} />
+                <MermaidDiagram
+                  definition={graphToMermaid(flowResult.graph)}
+                  fileName={`Flow Chart - ${flowchartFor.point.description}`}
+                />
               </>
             )}
           </Modal>

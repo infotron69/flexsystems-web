@@ -628,7 +628,10 @@ export default function PointQuestions() {
                   This checklist is large — the diagram stops at {flowGraph.nodes.length} steps.
                 </div>
               )}
-              <MermaidDiagram definition={graphToMermaid(flowGraph)} />
+              <MermaidDiagram
+                definition={graphToMermaid(flowGraph)}
+                fileName={`Flow Chart - ${point?.point_code?.trim()} ${point?.description ?? ''}`}
+              />
             </>
           )}
         </Modal>

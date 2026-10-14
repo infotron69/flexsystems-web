@@ -21,7 +21,10 @@
   overflow: hidden;
 }
 
-.dialog.wide { max-width: 96vw; }
+/* The wide dialog is the flow chart viewer: a fixed, near-full-screen frame
+   (not content-sized) so the chart inside can be fitted to the space left. */
+.dialog.wide { max-width: 96vw; height: 92vh; max-height: 92vh; }
+.dialog.wide .body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 .header {
   display: flex;
