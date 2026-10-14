@@ -9,6 +9,7 @@ import {
   copyRoutePointsAndQuestions,
 } from '../api/client';
 import Breadcrumb from '../components/Breadcrumb';
+import BackButton from '../components/BackButton';
 import useCanEditSite from '../hooks/useCanEditSite';
 import { markPdaFilesDirty } from '../pdaDirty';
 import styles from './RouteSetup.module.css';
@@ -456,6 +457,10 @@ export default function RouteSetup() {
   ];
 
   return (
+    <>
+    {/* Parent is this site's customer, only known once loaded -- so this
+        screen renders the standard BackButton itself (see navigation.js). */}
+    {customer?.id && <BackButton to={`/setup/customers/${customer.id}/sites`} label="Sites" />}
     <div className={styles.page}>
       <Breadcrumb crumbs={crumbs} />
       <div className={styles.header}>
@@ -873,5 +878,6 @@ export default function RouteSetup() {
         </div>
       </div>
     </div>
+    </>
   );
 }

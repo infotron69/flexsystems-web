@@ -284,7 +284,6 @@ export default function Questions() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate(-1)}>← Back</button>
         <h2 className={styles.heading}>
           Question Setup
           {!editable && <span className={styles.viewOnlyBadge}>View only</span>}
