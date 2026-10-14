@@ -1,8 +1,22 @@
+/* Fills whatever height the (wide) Modal body gives it, so the stage below can
+   be measured and the chart fitted to the space actually available. */
+.root {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .toolbar {
   display: flex;
+  justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
+
+.group { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .toolBtn {
   background: #eef1f7;
@@ -14,14 +28,18 @@
   color: #334;
 }
 .toolBtn:hover { background: #dde3ec; }
+.toolBtn.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
 
-/* Full-width measuring frame -- applyFit() reads this element's clientWidth
-   as the available space to scale the (possibly much larger) diagram into,
-   so it must never itself be resized to the diagram's size. */
+/* The measuring frame -- applyFit() reads its clientWidth/clientHeight as the
+   space to fit the chart into. */
 .stage {
-  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #e5e8ee;
+  border-radius: 4px;
+  background: #fff;
 }
 
-.actual {
-  overflow: auto;
-}
+.actual { display: block; }
+.actual svg { display: block; }
