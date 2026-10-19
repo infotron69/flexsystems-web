@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import html2canvas from 'html2canvas';
+import useGoBack from '../hooks/useGoBack';
 import {
   getGuards, getCustomers, getSites, getRoutes, getRoute, getRoutePoints,
   getRoutePointQuestions, getPointsByCode, getPointAllQuestions,
@@ -75,7 +76,9 @@ async function resolveChecklist(code, { routeId, routePoints }) {
 const emptyVisit = () => ({ scannedPointId: null, scannedPointCode: '', scannedPointDesc: '', answers: [], note: null });
 
 export default function PdaEmulator() {
-  const navigate = useNavigate();
+  // The app bar's arrow leaves the emulator for wherever it was opened from
+  // (Setup, a point's question editor...), falling back to Setup.
+  const leaveEmulator = useGoBack('/setup');
   // Deep-link support: /setup/pda-emulator/:routeId/:pointId (e.g. a "PDA
   // Emulator ->" shortcut from Route Point Questions) pre-loads the route
   // and immediately scans straight into that point's checklist, skipping
@@ -642,7 +645,7 @@ export default function PdaEmulator() {
     if (stage === 'checklist' || stage === 'incident') goBack();
     else if (stage === 'endRoute') continuePatrol();
     else if (stage === 'clockIn' || stage === 'routePicker') setStage('home');
-    else navigate('/setup');
+    else leaveEmulator();
   }
 
   async function submitAsTestTransactions() {
@@ -726,7 +729,7 @@ export default function PdaEmulator() {
         </div>
 
         <div className={styles.appBar}>
-          <button className={styles.appBarBack} onClick={() => navigate('/setup')} aria-label="Back to Setup">←</button>
+          <button className={styles.appBarBack} onClick={leaveEmulator} aria-label="Back">←</button>
           <span className={styles.appBarTitle}>FlexPatrol Mobile</span>
         </div>
 
@@ -782,7 +785,7 @@ export default function PdaEmulator() {
             FlexPatrol v1.1.0 (Emulator)<br />
             © 2026 FlexSystems, LLC. All rights reserved.
           </div>
-          <button className={styles.exitAppBtn} onClick={() => navigate('/setup')}>Exit App</button>
+          <button className={styles.exitAppBtn} onClick={leaveEmulator}>Exit App</button>
         </div>
       )}
 

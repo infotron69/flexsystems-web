@@ -5,6 +5,7 @@ import {
   getRoutePointQuestions, getRoutePointQuestionCounts, replaceRoutePointQuestions,
 } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
+import useGoBack from '../hooks/useGoBack';
 import { markPdaFilesDirty } from '../pdaDirty';
 import {
   MAX_SLOTS, TYPE_LABEL, jumpLabels, mkEmpty, rpqToSlot,
@@ -25,6 +26,7 @@ export default function BulkPointQuestions() {
   const pointIds = location.state?.pointIds ?? [];
 
   const [route,        setRoute]        = useState(null);
+  const goBack = useGoBack(route?.site_id ? `/setup/sites/${route.site_id}/routes` : '/setup/customers');
   const [routePoints,  setRoutePoints]  = useState([]);
   const [incidentsRoutePoints, setIncidentsRoutePoints] = useState([]);
   const [allQuestions, setAllQuestions] = useState([]);
@@ -139,6 +141,7 @@ export default function BulkPointQuestions() {
   if (pointIds.length === 0) {
     return (
       <div className={styles.page}>
+        <button className={styles.backBtn} style={{ marginBottom: 12 }} onClick={goBack}>← Back</button>
         <div className={styles.error}>
           No points were selected. Go back to Routes, select multiple points in "Points Allocated for Route"
           (shift/ctrl+click), then click "Assign Questions to N Points →".
@@ -155,12 +158,7 @@ export default function BulkPointQuestions() {
 
       {/* ── Header bar ── */}
       <div className={styles.header}>
-        <button
-          className={styles.backBtn}
-          onClick={() => navigate(`/setup/sites/${route.site_id}/routes`, { state: { routeId } })}
-        >
-          ← Points
-        </button>
+        <button className={styles.backBtn} onClick={goBack}>← Back</button>
         <div className={styles.titleBlock}>
           <span className={styles.routeLabel}>{route?.name}</span>
           <span className={styles.arrow}>›</span>

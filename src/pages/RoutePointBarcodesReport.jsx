@@ -72,7 +72,7 @@ export default function RoutePointBarcodesReport() {
 
   return (
     <div className={`${styles.page} ${styles.allowPageBreak}`}>
-      <ReportHeader title="Route Point Barcodes" subtitle="Route detail with a scannable barcode for each point's code" backTo="/setup/reports" />
+      <ReportHeader title="Route Point Barcodes" subtitle="Route detail with a scannable barcode for each point's code" />
       <div className={styles.meta}>Generated {now}</div>
 
       <div className={styles.filterBar}>

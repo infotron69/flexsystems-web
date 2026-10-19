@@ -63,7 +63,7 @@ export default function OperatorReport() {
 
   return (
     <div className={styles.page}>
-      <ReportHeader title="Operator Setup" subtitle="Operator roster — sortable, filterable" backTo="/setup/reports" onExport={handleExport} />
+      <ReportHeader title="Operator Setup" subtitle="Operator roster — sortable, filterable" onExport={handleExport} />
       <div className={styles.meta}>Generated {now} — {filtered.length} of {rows.length} operators</div>
 
       <div className={styles.filterBar}>
