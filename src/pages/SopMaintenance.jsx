@@ -149,7 +149,7 @@ export default function SopMaintenance() {
     <div className={styles.page}>
       <div className={styles.header}>
         <h2 className={styles.heading}>SOP Maintenance</h2>
-        <button className={styles.questionsBtn} style={{ marginLeft: 'auto' }} onClick={() => navigate('/setup/questions', { state: { backTo: '/setup/sops', backLabel: 'SOP Maintenance' } })}>
+        <button className={styles.questionsBtn} style={{ marginLeft: 'auto' }} onClick={() => navigate('/setup/questions')}>
           Questions →
         </button>
         <button className={styles.questionsBtn} onClick={() => navigate('/setup/reports/sops')}>

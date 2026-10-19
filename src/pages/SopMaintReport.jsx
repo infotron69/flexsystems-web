@@ -357,7 +357,7 @@ export default function SopMaintReport() {
 
   return (
     <div className={`${styles.page} ${styles.allowPageBreak}`}>
-      <ReportHeader title="SOP Maintenance" subtitle="Standard Operating Procedure checklists and which incident references each one" backTo="/setup/reports" onExport={handleExport} onBeforePrint={expandOnPrint ? expandAll : undefined} />
+      <ReportHeader title="SOP Maintenance" subtitle="Standard Operating Procedure checklists and which incident references each one" onExport={handleExport} onBeforePrint={expandOnPrint ? expandAll : undefined} />
       <div className={styles.meta}>
         Generated {now} — {filteredRows.length} of {rows.length} SOPs
         {unusedCount > 0 && <> — <strong className={styles.unusedMeta}>{unusedCount} not referenced by any incident or route</strong></>}

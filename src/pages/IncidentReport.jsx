@@ -127,7 +127,7 @@ export default function IncidentReport() {
 
   return (
     <div className={styles.page}>
-      <ReportHeader title="Incident / Activity" subtitle="Full incident type hierarchy" backTo="/setup/reports" onExport={handleExport} />
+      <ReportHeader title="Incident / Activity" subtitle="Full incident type hierarchy" onExport={handleExport} />
       <div className={styles.meta}>
         Generated {now} — {visibleTree.length} incident types, {totalSub1} sub-cat 1, {totalSub2} sub-cat 2, {totalSub3} sub-cat 3
       </div>

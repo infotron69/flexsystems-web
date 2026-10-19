@@ -160,6 +160,7 @@ export const getPoint    = (id)       => client.get(`/points/${id}`).then(r => r
 export const createPoint = (body)     => client.post('/points', body).then(r => r.data);
 export const updatePoint = (id, body) => client.patch(`/points/${id}`, body).then(r => r.data);
 export const deletePoint = (id)       => client.delete(`/points/${id}`);
+export const getPointUsage = (id)     => client.get(`/points/${id}/usage`).then(r => r.data);
 export const nextSopCode = (name)     => client.get('/points/next-sop-code', { params: { name } }).then(r => r.data.code);
 export const nextPointCode = (siteId) => client.get('/points/next-point-code', { params: { site_id: siteId } }).then(r => r.data.code);
 

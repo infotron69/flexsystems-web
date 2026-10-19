@@ -4,7 +4,7 @@ import { getMe, generateAllPda } from '../api/client';
 import usePdaFilesDirty from '../hooks/usePdaFilesDirty';
 import useScrollRestoration from '../hooks/useScrollRestoration';
 import { clearPdaFilesDirty } from '../pdaDirty';
-import { getBackTarget } from '../navigation';
+import { getBackFallback } from '../navigation';
 import BackButton from './BackButton';
 import logo from '../assets/flexsystems-logo.png';
 import styles from './Layout.module.css';
@@ -27,7 +27,7 @@ const BUILD_LABEL = new Date(__BUILD_TIME__).toLocaleString(undefined, {
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const backTarget = getBackTarget(location.pathname, location.state);
+  const backFallback = getBackFallback(location.pathname);
   const [me, setMe] = useState(null);
   const tenantLabel = localStorage.getItem('tenantLabel');
 
@@ -165,7 +165,7 @@ export default function Layout() {
             </div>
           </div>
         )}
-        {backTarget && <BackButton to={backTarget.to} label={backTarget.label} />}
+        {backFallback && <BackButton fallback={backFallback} />}
         <Outlet />
       </main>
     </div>

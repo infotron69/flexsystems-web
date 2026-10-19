@@ -133,6 +133,9 @@ export default function RouteSetup() {
 
   // ── Select a route ──────────────────────────────────────────────────────────
   const selectRoute = useCallback(async (route) => {
+    // Remember the selection on this history entry, so Back from a point's
+    // question editor (or anywhere) lands on the same route again.
+    navigate(location.pathname, { replace: true, state: { routeId: route.id } });
     setSelRoute(route);
     setIsNew(false);
     setFormName(route.name);
@@ -151,7 +154,7 @@ export default function RouteSetup() {
     ]);
     setAllocPoints(alloc);
     setQuestionCounts(counts);
-  }, []);
+  }, [navigate, location.pathname]);
 
   const sortedRoutes = useMemo(() => {
     if (sortMode === 'code') {
@@ -460,7 +463,7 @@ export default function RouteSetup() {
     <>
     {/* Parent is this site's customer, only known once loaded -- so this
         screen renders the standard BackButton itself (see navigation.js). */}
-    {customer?.id && <BackButton to={`/setup/customers/${customer.id}/sites`} label="Sites" />}
+    {customer?.id && <BackButton fallback={`/setup/customers/${customer.id}/sites`} />}
     <div className={styles.page}>
       <Breadcrumb crumbs={crumbs} />
       <div className={styles.header}>

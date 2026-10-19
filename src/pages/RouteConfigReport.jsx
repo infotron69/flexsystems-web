@@ -82,7 +82,7 @@ export default function RouteConfigReport() {
 
   return (
     <div className={styles.page}>
-      <ReportHeader title="Route Setup" subtitle="Routes and their allocated points" backTo="/setup/reports" onExport={handleExport} />
+      <ReportHeader title="Route Setup" subtitle="Routes and their allocated points" onExport={handleExport} />
       <div className={styles.meta}>Generated {now}</div>
 
       <div className={styles.filterBar}>

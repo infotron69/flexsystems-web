@@ -7,6 +7,7 @@ import {
   getPointsByCode, getPointAllQuestions,
 } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
+import useGoBack from '../hooks/useGoBack';
 import { markPdaFilesDirty } from '../pdaDirty';
 import {
   MAX_SLOTS, TYPE_LABEL, jumpLabels, isPointCode, jumpLabel, mkEmpty, rpqToSlot,
@@ -112,6 +113,13 @@ export default function PointQuestions() {
   const { canEdit } = useCanEditSite();
 
   const [route,        setRoute]        = useState(null);
+  // Back returns to wherever this editor was opened from (the route's point
+  // list, SOP Maintenance, a report, another point's chain...); the parent
+  // is only the fallback when there's no earlier page.
+  const goBack = useGoBack(
+    routeId === 'Incidents1' ? '/setup/sops'
+      : route?.site_id ? `/setup/sites/${route.site_id}/routes` : '/setup/customers',
+  );
   const [point,        setPoint]        = useState(null);
   const [routePoints,  setRoutePoints]  = useState([]);
   // Points on the special "Incidents1" route — legacy jump destinations for
@@ -416,14 +424,7 @@ export default function PointQuestions() {
 
       {/* ── Header bar ── */}
       <div className={styles.header}>
-        <button
-          className={styles.backBtn}
-          onClick={() => routeId === 'Incidents1'
-            ? navigate('/setup/sops')
-            : navigate(`/setup/sites/${route.site_id}/routes`, { state: { routeId } })}
-        >
-          {routeId === 'Incidents1' ? '← SOP Maintenance' : '← Points'}
-        </button>
+        <button className={styles.backBtn} onClick={goBack}>← Back</button>
         {dirty && editable && (
           <button className={styles.saveBtn} onClick={saveAll} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
@@ -442,7 +443,7 @@ export default function PointQuestions() {
           <button className={styles.backBtn} onClick={openFlowChart} disabled={!currentList.length}>
             ⚭ Flow Chart
           </button>
-          <button className={styles.backBtn} onClick={() => navigate('/setup/questions', { state: { backTo: `/setup/routes/${routeId}/points/${pointId}/questions`, backLabel: 'Point Questions' } })}>
+          <button className={styles.backBtn} onClick={() => navigate('/setup/questions')}>
             Questions →
           </button>
           <button className={styles.backBtn} onClick={() => navigate('/setup/reports/route-questions')}>

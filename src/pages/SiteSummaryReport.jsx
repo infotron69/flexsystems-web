@@ -70,7 +70,7 @@ export default function SiteSummaryReport() {
 
   return (
     <div className={styles.page}>
-      <ReportHeader title="Site Summary" subtitle="Configuration report" backTo="/setup/reports" onExport={handleExport} />
+      <ReportHeader title="Site Summary" subtitle="Configuration report" onExport={handleExport} />
       <div className={styles.meta}>Generated {now}</div>
 
       <div className={styles.filterBar}>

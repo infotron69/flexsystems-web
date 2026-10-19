@@ -506,7 +506,7 @@ export default function Incidents() {
           {!editable && <span className={styles.viewOnlyBadge}>View only</span>}
         </h2>
         <button className={styles.sopMaintBtn} onClick={() => navigate('/setup/sops')}>SOP Maint →</button>
-        <button className={styles.questionsBtn} onClick={() => navigate('/setup/questions', { state: { backTo: '/setup/incidents', backLabel: 'Incidents' } })}>Questions →</button>
+        <button className={styles.questionsBtn} onClick={() => navigate('/setup/questions')}>Questions →</button>
         <button className={styles.questionsBtn} onClick={() => navigate('/setup/reports/incidents')}>Print Report →</button>
       </div>
 

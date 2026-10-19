@@ -3,6 +3,7 @@ import useScrollRestoration from '../hooks/useScrollRestoration';
 import {
   getCustomers, getSites, getRoutes, getRoutePoints, getRoutePointQuestionCounts,
   importPoints, getPoints, getPoint, createPoint, updatePoint, nextPointCode,
+  deletePoint, getPointUsage,
 } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
 import { markPdaFilesDirty } from '../pdaDirty';
@@ -52,6 +53,11 @@ export default function ImportPoints() {
   const [editSaving, setEditSaving]   = useState(false);
   const [editErr, setEditErr]         = useState(null);
 
+  // Delete confirmation for the point being edited: { loading } while its
+  // usage is fetched, then { usage } (what deleting would remove) or { error }.
+  const [delInfo, setDelInfo]   = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     Promise.all([getCustomers(), getSites()])
       .then(([c, s]) => { setCustomers(c); setSites(s); })
@@ -91,7 +97,31 @@ export default function ImportPoints() {
     });
   }
 
+  function startDelete() {
+    setDelInfo({ loading: true });
+    getPointUsage(editingCode)
+      .then(usage => setDelInfo({ usage }))
+      .catch(() => setDelInfo({ error: 'Could not check where this point is used.' }));
+  }
+
+  async function confirmDelete() {
+    const code = editingCode;
+    setDeleting(true);
+    try {
+      await deletePoint(code);
+      setSitePoints(prev => prev.filter(p => p.id !== code));
+      setRoutePoints(prev => prev.filter(rp => rp.point_id !== code));
+      cancelEditPoint();
+      markPdaFilesDirty();
+    } catch (ex) {
+      setDelInfo({ error: ex.response?.data?.detail ?? 'Delete failed' });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function startEditPoint(pointId) {
+    setDelInfo(null);
     setEditingCode(pointId);
     setEditForm(emptyEditForm);
     setEditErr(null);
@@ -128,6 +158,7 @@ export default function ImportPoints() {
   }
 
   function cancelEditPoint() {
+    setDelInfo(null);
     setEditingCode(null);
     setEditForm(emptyEditForm);
     setEditErr(null);
@@ -425,7 +456,44 @@ export default function ImportPoints() {
                           </button>
                         )}
                         <button className={styles.cancelBtn} onClick={cancelEditPoint}>Cancel</button>
+                        {editable && editingCode !== NEW_POINT && !delInfo && (
+                          <button className={styles.deleteBtn} style={{ marginLeft: 'auto' }} onClick={startDelete}>Delete</button>
+                        )}
                       </div>
+
+                      {delInfo && (
+                        <div className={styles.formErr} style={{ marginTop: 10, padding: '10px 12px', border: '1px solid #fecaca', background: '#fef2f2', borderRadius: 6 }}>
+                          {delInfo.loading && <>Checking where this point is used…</>}
+                          {delInfo.error && <>{delInfo.error}</>}
+                          {delInfo.usage?.has_transactions && (
+                            <>
+                              <strong>{editingCode} can't be deleted:</strong> it has recorded transactions, which keep its
+                              code as the audit trail. Take it off its routes instead (Setup &gt; Customers &gt; Sites &gt; Routes).
+                            </>
+                          )}
+                          {delInfo.usage && !delInfo.usage.has_transactions && (
+                            <>
+                              <strong>Delete {editingCode}?</strong> It will be removed from {delInfo.usage.routes} route
+                              {delInfo.usage.routes === 1 ? '' : 's'} and its {delInfo.usage.questions} question
+                              {delInfo.usage.questions === 1 ? '' : 's'} deleted. This can't be undone.
+                              {delInfo.usage.jump_references > 0 && (
+                                <> {delInfo.usage.jump_references} question{delInfo.usage.jump_references === 1 ? '' : 's'} on other points jump to it and will be left pointing at nothing.</>
+                              )}
+                              <div className={styles.formActions}>
+                                <button className={styles.deleteBtn} onClick={confirmDelete} disabled={deleting}>
+                                  {deleting ? 'Deleting…' : 'Yes, delete'}
+                                </button>
+                                <button className={styles.cancelBtn} onClick={() => setDelInfo(null)} disabled={deleting}>Keep it</button>
+                              </div>
+                            </>
+                          )}
+                          {!delInfo.loading && (delInfo.error || delInfo.usage?.has_transactions) && (
+                            <div className={styles.formActions}>
+                              <button className={styles.cancelBtn} onClick={() => setDelInfo(null)}>OK</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

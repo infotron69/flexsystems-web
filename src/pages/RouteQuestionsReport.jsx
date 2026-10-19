@@ -308,7 +308,7 @@ export default function RouteQuestionsReport() {
 
   return (
     <div className={styles.page}>
-      <ReportHeader title="Route Setup w/ Questions" subtitle="Routes, points, and their assigned questions" backTo="/setup/reports" onExport={handleExport} />
+      <ReportHeader title="Route Setup w/ Questions" subtitle="Routes, points, and their assigned questions" onExport={handleExport} />
       <div className={styles.meta}>Generated {now}</div>
 
       <div className={styles.filterBar}>

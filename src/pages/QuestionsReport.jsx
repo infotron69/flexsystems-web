@@ -79,7 +79,7 @@ export default function QuestionsReport() {
 
   return (
     <div className={styles.page}>
-      <ReportHeader title="Questions Setup" subtitle="Full question library, grouped by category" backTo="/setup/reports" onExport={handleExport} />
+      <ReportHeader title="Questions Setup" subtitle="Full question library, grouped by category" onExport={handleExport} />
       <div className={styles.meta}>Generated {now} — {filteredRows.length} of {rows.length} questions</div>
 
       <div className={styles.filterBar}>
