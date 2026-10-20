@@ -27,6 +27,7 @@ const BACK_FALLBACKS = [
   ['/setup/points/import', '/setup'],
   ['/setup/device-setup-code', '/setup'],
   ['/setup/tenants', '/setup'],
+  ['/setup/all-sites', '/setup'],
   ['/setup/audit-log', '/setup'],
   ['/setup/integration-tester', '/setup'],
 ];

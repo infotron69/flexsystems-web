@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { getDeviceSetupConfig, updateDeviceSetupConfig } from '../api/client';
+import { getDeviceSetupConfig, updateDeviceSetupConfig, getSites } from '../api/client';
 import styles from './DeviceSetupCode.module.css';
 
 // Mirrors exactly the shape FlexPatrol Mobile's UPDATE_SETTINGS action (and
@@ -102,6 +102,38 @@ const SCANNING_TYPES = [
   { value: 'manual', label: 'Manual' },
 ];
 
+// PNG of a QR with a label under it (company, or company + site), downloaded.
+function downloadLabeledQr(qrDataUrl, label, filename) {
+  const img = new Image();
+  img.onload = () => {
+    const labelH = label ? 90 : 0;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height + labelH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    if (label) {
+      let size = 44;
+      ctx.font = `bold ${size}px sans-serif`;
+      while (size > 18 && ctx.measureText(label).width > canvas.width - 40) {
+        size -= 2;
+        ctx.font = `bold ${size}px sans-serif`;
+      }
+      ctx.fillStyle = '#1a2332';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, canvas.width / 2, img.height + labelH / 2 - 10);
+    }
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = filename;
+    a.click();
+  };
+  img.src = qrDataUrl;
+}
+
 function buildPayload(form) {
   // The app only distinguishes 'camera' (its own scan screen) from 'wedge'
   // (an external scanner types into the same ready-and-waiting field a
@@ -149,6 +181,12 @@ export default function DeviceSetupCode() {
   const [unlockErr, setUnlockErr] = useState(null);
   const [err, setErr] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error
+  // Per-site setup codes (see generateSiteQrs below).
+  const [sites, setSites] = useState([]);
+  const [siteLogins, setSiteLogins] = useState({});
+  const [siteQrs, setSiteQrs] = useState({});
+  const [siteStatus, setSiteStatus] = useState('idle'); // idle | saving | saved | error
+  const [printSites, setPrintSites] = useState(false);
 
   // The tenant this instance of the page loaded for, captured once at mount
   // -- compared against localStorage.tenant below to catch a login in
@@ -185,7 +223,11 @@ export default function DeviceSetupCode() {
   // resetting to the hardcoded demo defaults.
   useEffect(() => {
     getDeviceSetupConfig()
-      .then(cfg => { if (cfg) setForm(prev => ({ ...prev, ...fromServerConfig(cfg) })); })
+      .then(cfg => {
+        if (!cfg) return;
+        setForm(prev => ({ ...prev, ...fromServerConfig(cfg) }));
+        if (cfg.site_logins) setSiteLogins(cfg.site_logins);
+      })
       .catch(() => {});
   }, []);
 
@@ -249,34 +291,63 @@ export default function DeviceSetupCode() {
   // shown on screen.
   function saveQrImage() {
     if (!qrDataUrl) return;
-    const img = new Image();
-    img.onload = () => {
-      const labelH = tenantLabel ? 90 : 0;
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height + labelH;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      if (tenantLabel) {
-        let size = 44;
-        ctx.font = `bold ${size}px sans-serif`;
-        while (size > 18 && ctx.measureText(tenantLabel).width > canvas.width - 40) {
-          size -= 2;
-          ctx.font = `bold ${size}px sans-serif`;
-        }
-        ctx.fillStyle = '#1a2332';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(tenantLabel, canvas.width / 2, img.height + labelH / 2 - 10);
-      }
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = `${localStorage.getItem('tenant') || 'tenant'}-device-setup-code.png`;
-      a.click();
-    };
-    img.src = qrDataUrl;
+    downloadLabeledQr(qrDataUrl, tenantLabel, `${localStorage.getItem('tenant') || 'tenant'}-device-setup-code.png`);
+  }
+
+  // ── Per-site setup codes ───────────────────────────────────────────────
+  // A device "loads" a site by scanning a setup code whose FTP login (home
+  // folder = that site's folder) is that site's own. Logins left blank fall
+  // back to the tenant-wide one above.
+
+  useEffect(() => {
+    getSites()
+      .then(list => setSites(list.filter(s => s.id !== 'Incidents1' && s.id !== 'PERSP00001').sort((a, b) => a.site_code.localeCompare(b.site_code))))
+      .catch(() => {});
+  }, []);
+
+  function updateSiteLogin(code, key, value) {
+    setSiteLogins(prev => ({ ...prev, [code]: { user: '', password: '', ...prev[code], [key]: value } }));
+    setSiteQrs(prev => { const next = { ...prev }; delete next[code]; return next; });
+    setSiteStatus('idle');
+  }
+
+  async function generateSiteQrs() {
+    setErr(null);
+    if (tenantChangedElsewhere) {
+      setErr('The active tenant changed in another tab. Reload this page before saving, so you don’t overwrite the wrong tenant’s settings.');
+      return;
+    }
+    if (!form.host.trim()) { setErr('Remote Host is required.'); return; }
+    try {
+      const entries = await Promise.all(sites.map(async s => {
+        const login = siteLogins[s.site_code] || {};
+        const payload = buildPayload({ ...form, user: login.user?.trim() || form.user, password: login.password || form.password });
+        return [s.site_code, await QRCode.toDataURL(JSON.stringify(payload), { width: 720, margin: 2 })];
+      }));
+      setSiteQrs(Object.fromEntries(entries));
+    } catch (ex) {
+      setErr('Could not generate QR codes: ' + ex.message);
+      return;
+    }
+    // Only sites that actually have their own login are stored.
+    const stored = Object.fromEntries(
+      Object.entries(siteLogins).filter(([, l]) => l.user?.trim() || l.password).map(([c, l]) => [c, { user: l.user?.trim() ?? '', password: l.password ?? '' }]),
+    );
+    setSiteStatus('saving');
+    updateDeviceSetupConfig({ ...toServerConfig(form), site_logins: stored })
+      .then(() => setSiteStatus('saved'))
+      .catch(() => setSiteStatus('error'));
+  }
+
+  // Prints just the site codes (the page's normal print is the single
+  // tenant code): flag the page, let it re-render, print, then clear it.
+  function printSiteCodes() {
+    const prev = document.title;
+    document.title = `Site Setup Codes - ${tenantLabel || localStorage.getItem('tenant') || ''}`;
+    setPrintSites(true);
+    const done = () => { setPrintSites(false); document.title = prev; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    setTimeout(() => window.print(), 100);
   }
 
   // Print dialog -> "Save as PDF". The tab title becomes the default PDF
@@ -297,7 +368,7 @@ export default function DeviceSetupCode() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${printSites ? styles.printSites : ''}`}>
       <h2 className={styles.heading}>Device Setup Code</h2>
       <p className={`${styles.subheading} ${styles.noPrint}`}>
         Generates a QR code that configures a FlexPatrol Mobile device in one scan — FTP server details plus the GPS, camera, and barcode-scanning settings. The app has no manual settings screen; this is the only way to configure a device.
@@ -312,7 +383,7 @@ export default function DeviceSetupCode() {
         </div>
       )}
 
-      <div className={styles.layout}>
+      <div className={`${styles.layout} ${styles.mainCodeArea}`}>
         <div className={`${styles.form} ${styles.noPrint}`}>
           {err && <div className={styles.formErr}>{err}</div>}
 
@@ -405,6 +476,56 @@ export default function DeviceSetupCode() {
           ) : (
             <p className={styles.qrPlaceholder}>Fill in the form and click Generate to preview the code here.</p>
           )}
+        </div>
+      </div>
+
+      <div className={styles.siteSection}>
+        <h2 className={`${styles.heading} ${styles.siteHeading}`} style={{ marginTop: 32 }}>Site Setup Codes</h2>
+        <p className={`${styles.subheading} ${styles.noPrint}`}>
+          One code per site, to load that site on a device: it carries the connection settings above with the site's own FTP login
+          (the login whose home folder is that site's folder). A site left blank uses the login above.
+        </p>
+        <div className={`${styles.formActions} ${styles.noPrint}`}>
+          <button className={styles.saveBtn} onClick={generateSiteQrs} disabled={sites.length === 0}>Generate Site Codes</button>
+          {Object.keys(siteQrs).length > 0 && (
+            <button className={styles.printBtn} onClick={printSiteCodes}>Print / Save as PDF</button>
+          )}
+          {siteStatus === 'saving' && <span className={styles.formHint}>Saving…</span>}
+          {siteStatus === 'saved' && <span className={styles.saveOkNote}>✓ Site logins saved for this tenant</span>}
+          {siteStatus === 'error' && <span className={styles.formErr}>Could not save the site logins.</span>}
+        </div>
+        <div className={styles.siteGrid}>
+          {sites.map(s => {
+            const login = siteLogins[s.site_code] || {};
+            const qr = siteQrs[s.site_code];
+            return (
+              <div className={styles.siteCard} key={s.site_code}>
+                <div className={styles.siteCardTitle}>{s.name} <span className={styles.siteCardCode}>{s.site_code}</span></div>
+                <div className={styles.noPrint}>
+                  <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} style={{ marginBottom: 6, width: '100%' }}
+                    value={login.user ?? ''} placeholder={`FTP username (blank = ${form.user || 'tenant login'})`}
+                    onChange={e => updateSiteLogin(s.site_code, 'user', e.target.value)} />
+                  <input type="password" className={styles.formInput} style={{ marginBottom: 8, width: '100%' }}
+                    value={login.password ?? ''} placeholder="FTP password (blank = tenant password)"
+                    onChange={e => updateSiteLogin(s.site_code, 'password', e.target.value)} />
+                </div>
+                {qr ? (
+                  <>
+                    <img src={qr} alt={`Setup QR code for ${s.name}`} className={styles.siteQr} />
+                    <div className={styles.siteCardLabel}>{[tenantLabel, s.name].filter(Boolean).join(' — ')}</div>
+                    <p className={styles.printOnly}>This code contains the FTP login — keep it secure.</p>
+                    <button className={`${styles.toolBtn} ${styles.noPrint}`} onClick={() =>
+                      downloadLabeledQr(qr, [tenantLabel, s.name].filter(Boolean).join(' — '), `${localStorage.getItem('tenant') || 'tenant'}-${s.site_code}-setup-code.png`)}>
+                      Save PNG
+                    </button>
+                  </>
+                ) : (
+                  <div className={`${styles.formHint} ${styles.noPrint}`}>Click “Generate Site Codes” to create this site's code.</div>
+                )}
+              </div>
+            );
+          })}
+          {sites.length === 0 && <div className={styles.formHint}>No sites to show yet.</div>}
         </div>
       </div>
 

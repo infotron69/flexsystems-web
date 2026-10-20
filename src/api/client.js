@@ -252,6 +252,7 @@ export const getAdminTenants   = ()           => client.get('/tenants').then(r =
 export const createAdminTenant = (body)       => client.post('/tenants', body).then(r => r.data);
 export const updateAdminTenant = (id, body)   => client.put(`/tenants/${id}`, body).then(r => r.data);
 export const deleteAdminTenant = (id)         => client.delete(`/tenants/${id}`);
+export const getAllSites       = ()           => client.get('/tenants/all-sites').then(r => r.data);
 export const sendTestReport    = (id)         => client.post(`/tenants/${id}/send-test-report`).then(r => r.data);
 
 // SMTP settings (same admin-only gating as the tenant registry above).
