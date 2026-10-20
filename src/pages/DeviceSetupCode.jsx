@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { getDeviceSetupConfig, updateDeviceSetupConfig, getSites } from '../api/client';
 import styles from './DeviceSetupCode.module.css';
@@ -76,6 +76,16 @@ function toServerConfig(form) {
     upload_path: form.uploadPath,
     download_path: form.downloadPath,
   };
+}
+
+// Only sites that actually have their own login are stored (blank = use the
+// tenant-wide one).
+function storedSiteLogins(logins) {
+  return Object.fromEntries(
+    Object.entries(logins)
+      .filter(([, l]) => l.user?.trim() || l.password)
+      .map(([code, l]) => [code, { user: l.user?.trim() ?? '', password: l.password ?? '' }]),
+  );
 }
 
 function fromServerConfig(cfg) {
@@ -181,12 +191,15 @@ export default function DeviceSetupCode() {
   const [unlockErr, setUnlockErr] = useState(null);
   const [err, setErr] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error
-  // Per-site setup codes (see generateSiteQrs below).
+  // Per-site setup codes (built automatically; see the QR effect below).
   const [sites, setSites] = useState([]);
   const [siteLogins, setSiteLogins] = useState({});
   const [siteQrs, setSiteQrs] = useState({});
   const [siteStatus, setSiteStatus] = useState('idle'); // idle | saving | saved | error
   const [printSites, setPrintSites] = useState(false);
+  // Set once the saved settings have loaded; gates auto-save (see below).
+  const [loaded, setLoaded] = useState(false);
+  const baselineRef = useRef(null);
 
   // The tenant this instance of the page loaded for, captured once at mount
   // -- compared against localStorage.tenant below to catch a login in
@@ -224,12 +237,57 @@ export default function DeviceSetupCode() {
   useEffect(() => {
     getDeviceSetupConfig()
       .then(cfg => {
-        if (!cfg) return;
-        setForm(prev => ({ ...prev, ...fromServerConfig(cfg) }));
-        if (cfg.site_logins) setSiteLogins(cfg.site_logins);
+        if (cfg) {
+          setForm(prev => ({ ...prev, ...fromServerConfig(cfg) }));
+          if (cfg.site_logins) setSiteLogins(cfg.site_logins);
+        }
+        setLoaded(true);
       })
+      // A failed load leaves `loaded` false on purpose: auto-save below must
+      // never overwrite the server's settings with this browser's fallback.
       .catch(() => {});
   }, []);
+
+  // Auto-save: every change to the settings or the per-site logins is saved
+  // to the server a moment after the last keystroke, so nothing depends on
+  // remembering to click Generate (and another browser sees the same
+  // settings). The first state after a load is just the baseline, not a change.
+  useEffect(() => {
+    if (!loaded || tenantChangedElsewhere || !form.host.trim()) return undefined;
+    const body = { ...toServerConfig(form), site_logins: storedSiteLogins(siteLogins) };
+    const json = JSON.stringify(body);
+    if (baselineRef.current === null) { baselineRef.current = json; return undefined; }
+    if (json === baselineRef.current) return undefined;
+    const timer = setTimeout(() => {
+      setSaveStatus('saving');
+      updateDeviceSetupConfig(body)
+        .then(() => { baselineRef.current = json; setSaveStatus('saved'); })
+        .catch(() => setSaveStatus('error'));
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [form, siteLogins, loaded, tenantChangedElsewhere]);
+
+  // The codes always reflect the current settings: rebuilt whenever they
+  // change and on every visit (they're only encoded text, nothing to store).
+  useEffect(() => {
+    if (!form.host.trim()) return undefined;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const qr = text => QRCode.toDataURL(text, { width: 720, margin: 2 });
+        const main = await qr(JSON.stringify(buildPayload(form)));
+        const entries = await Promise.all(sites.map(async s => {
+          const login = siteLogins[s.site_code] || {};
+          const payload = buildPayload({ ...form, user: login.user?.trim() || form.user, password: login.password || form.password });
+          return [s.site_code, await qr(JSON.stringify(payload))];
+        }));
+        if (!cancelled) { setQrDataUrl(main); setSiteQrs(Object.fromEntries(entries)); }
+      } catch (ex) {
+        if (!cancelled) setErr('Could not generate QR code: ' + ex.message);
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [form, sites, siteLogins]);
 
   // Keeps the form's values across leaving/returning to this page (and a
   // full reload) instead of resetting to the hardcoded demo defaults every
@@ -247,7 +305,6 @@ export default function DeviceSetupCode() {
 
   function updateField(key, value) {
     setForm(prev => ({ ...prev, [key]: value }));
-    setQrDataUrl(null);
     setSaveStatus('idle');
   }
 
@@ -258,7 +315,6 @@ export default function DeviceSetupCode() {
         ? prev.scanningTypes.filter(v => v !== value)
         : [...prev.scanningTypes, value],
     }));
-    setQrDataUrl(null);
     setSaveStatus('idle');
   }
 
@@ -307,34 +363,19 @@ export default function DeviceSetupCode() {
 
   function updateSiteLogin(code, key, value) {
     setSiteLogins(prev => ({ ...prev, [code]: { user: '', password: '', ...prev[code], [key]: value } }));
-    setSiteQrs(prev => { const next = { ...prev }; delete next[code]; return next; });
     setSiteStatus('idle');
   }
 
-  async function generateSiteQrs() {
+  // The codes themselves are built automatically (see the effect above);
+  // this is the explicit "save now" for the per-site logins.
+  function saveSiteLogins() {
     setErr(null);
     if (tenantChangedElsewhere) {
       setErr('The active tenant changed in another tab. Reload this page before saving, so you don’t overwrite the wrong tenant’s settings.');
       return;
     }
-    if (!form.host.trim()) { setErr('Remote Host is required.'); return; }
-    try {
-      const entries = await Promise.all(sites.map(async s => {
-        const login = siteLogins[s.site_code] || {};
-        const payload = buildPayload({ ...form, user: login.user?.trim() || form.user, password: login.password || form.password });
-        return [s.site_code, await QRCode.toDataURL(JSON.stringify(payload), { width: 720, margin: 2 })];
-      }));
-      setSiteQrs(Object.fromEntries(entries));
-    } catch (ex) {
-      setErr('Could not generate QR codes: ' + ex.message);
-      return;
-    }
-    // Only sites that actually have their own login are stored.
-    const stored = Object.fromEntries(
-      Object.entries(siteLogins).filter(([, l]) => l.user?.trim() || l.password).map(([c, l]) => [c, { user: l.user?.trim() ?? '', password: l.password ?? '' }]),
-    );
     setSiteStatus('saving');
-    updateDeviceSetupConfig({ ...toServerConfig(form), site_logins: stored })
+    updateDeviceSetupConfig({ ...toServerConfig(form), site_logins: storedSiteLogins(siteLogins) })
       .then(() => setSiteStatus('saved'))
       .catch(() => setSiteStatus('error'));
   }
@@ -486,7 +527,7 @@ export default function DeviceSetupCode() {
           (the login whose home folder is that site's folder). A site left blank uses the login above.
         </p>
         <div className={`${styles.formActions} ${styles.noPrint}`}>
-          <button className={styles.saveBtn} onClick={generateSiteQrs} disabled={sites.length === 0}>Generate Site Codes</button>
+          <button className={styles.saveBtn} onClick={saveSiteLogins} disabled={sites.length === 0}>Save Site Logins</button>
           {Object.keys(siteQrs).length > 0 && (
             <button className={styles.printBtn} onClick={printSiteCodes}>Print / Save as PDF</button>
           )}
@@ -520,7 +561,7 @@ export default function DeviceSetupCode() {
                     </button>
                   </>
                 ) : (
-                  <div className={`${styles.formHint} ${styles.noPrint}`}>Click “Generate Site Codes” to create this site's code.</div>
+                  <div className={`${styles.formHint} ${styles.noPrint}`}>Building this site's code…</div>
                 )}
               </div>
             );
