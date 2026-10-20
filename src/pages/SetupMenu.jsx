@@ -49,6 +49,7 @@ const ITEMS = [
 // this just keeps the tile from appearing where it'd be confusing or a red
 // flag, or clickable only to hit a 403).
 const ADMIN_ITEM = { label: 'Customers & Databases', sub: 'Manage tenant databases, login links, daily report emails', to: '/setup/tenants' };
+const ALL_SITES_ITEM = { label: 'All Sites', sub: 'Every customer\'s sites in one list (read-only)', to: '/setup/all-sites' };
 
 // Managing logins/access is unrestricted-admin-only (the backend enforces
 // this too -- a site-restricted user, even with full edit rights, has no
@@ -79,7 +80,7 @@ export default function SetupMenu() {
   const showAdminOnly = !me || unrestricted; // optimistic while loading; hides only once confirmed restricted
   const isFlexTenant = localStorage.getItem('tenant') === 'flex';
   const items = useMemo(() => {
-    let list = isFlexTenant && showAdminOnly ? [...ITEMS, ADMIN_ITEM] : ITEMS;
+    let list = isFlexTenant && showAdminOnly ? [...ITEMS, ADMIN_ITEM, ALL_SITES_ITEM] : ITEMS;
     if (showAdminOnly) list = [...list.slice(0, 2), USER_SETUP_ITEM, ...list.slice(2), PDA_EMULATOR_ITEM, INTEGRATION_TESTER_ITEM, LOTO_TYPES_ITEM];
     return list;
   }, [isFlexTenant, showAdminOnly]);

@@ -34,6 +34,7 @@ import GpsMapReport         from './pages/GpsMapReport';
 import PerformanceMetricsReport from './pages/PerformanceMetricsReport';
 import LocationPerformanceReport from './pages/LocationPerformanceReport';
 import AdminTenants         from './pages/AdminTenants';
+import AllSites             from './pages/AllSites';
 import AuditLog             from './pages/AuditLog';
 import IntegrationApiTester from './pages/IntegrationApiTester';
 
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="setup/points/import" element={<ImportPoints />} />
           <Route path="setup/device-setup-code" element={<DeviceSetupCode />} />
           <Route path="setup/tenants"   element={<AdminTenants />} />
+          <Route path="setup/all-sites" element={<AllSites />} />
           <Route path="setup/audit-log" element={<AuditLog />} />
           <Route path="setup/integration-tester" element={<IntegrationApiTester />} />
 
