@@ -69,7 +69,8 @@ export const setUserPassword = (userCode, password) =>
   client.put(`/auth/users/${userCode}/password`, { password }).then(r => r.data);
 export const setUserSites    = (userCode, siteAccess) =>
   client.put(`/auth/users/${userCode}/sites`, { site_access: siteAccess }).then(r => r.data);
-export const deleteUser      = (userCode)  => client.delete(`/auth/users/${userCode}`);
+export const setUserReports  = (userCode, reports) => client.put(`/auth/users/${userCode}/reports`, reports).then(r => r.data);
+export const deleteUser      =(userCode)  => client.delete(`/auth/users/${userCode}`);
 
 // ---------------------------------------------------------------------------
 // Customers
@@ -241,7 +242,9 @@ export const getLastDownload = () => client.get('/transactions/last-download').t
 export const getPdaSites    = ()         => client.get('/pda/sites').then(r => r.data);
 export const getListFile    = (filename) => client.get(`/pda/listfile/${encodeURIComponent(filename)}`, { responseType: 'text' }).then(r => r.data);
 export const saveListFile   = (filename, content) => client.put(`/pda/listfile/${encodeURIComponent(filename)}`, { content }).then(r => r.data);
-export const generateAllPda = ()         => client.post('/pda/generate').then(r => r.data);
+export const createCombinedGroup = (name, siteCodes) => client.post('/pda/groups', { name, site_codes: siteCodes }).then(r => r.data);
+export const deleteCombinedGroup = (name) => client.delete(`/pda/groups/${encodeURIComponent(name)}`).then(r => r.data);
+export const generateAllPda =()         => client.post('/pda/generate').then(r => r.data);
 export const generatePda    = (siteName) => client.post(`/pda/generate/${siteName}`).then(r => r.data);
 
 // ---------------------------------------------------------------------------
