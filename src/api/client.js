@@ -253,6 +253,10 @@ export const createAdminTenant = (body)       => client.post('/tenants', body).t
 export const updateAdminTenant = (id, body)   => client.put(`/tenants/${id}`, body).then(r => r.data);
 export const deleteAdminTenant = (id)         => client.delete(`/tenants/${id}`);
 export const getAllSites       = ()           => client.get('/tenants/all-sites').then(r => r.data);
+// A customer admin's own company settings (name + report recipients only).
+export const getMyCompany        = ()     => client.get('/my-company').then(r => r.data);
+export const updateMyCompany     = (body) => client.put('/my-company', body).then(r => r.data);
+export const sendMyTestReport    = ()     => client.post('/my-company/send-test-report').then(r => r.data);
 export const sendTestReport    = (id)         => client.post(`/tenants/${id}/send-test-report`).then(r => r.data);
 
 // SMTP settings (same admin-only gating as the tenant registry above).
