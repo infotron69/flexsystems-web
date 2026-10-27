@@ -28,6 +28,13 @@ function toForm(g) {
   };
 }
 
+// Operator IDs are always 10 characters, left-padded with zeros (initials too:
+// "DB" becomes "00000000DB") -- the server does the same on create.
+function padCardNumber(value) {
+  const v = value.trim().toUpperCase();
+  return v && v.length < 10 ? v.padStart(10, '0') : v;
+}
+
 export default function Guards() {
   const navigate = useNavigate();
   const { hasAnyEditAccess: editable } = useCanEditSite();
@@ -106,7 +113,7 @@ export default function Guards() {
       if (isNew) {
         const created = await createGuard({
           ...form,
-          card_number: form.card_number.trim().toUpperCase(),
+          card_number: padCardNumber(form.card_number),
           last_name: form.last_name.trim().toUpperCase(),
           first_name: form.first_name.toUpperCase(),
           rank: form.rank.toUpperCase(),
