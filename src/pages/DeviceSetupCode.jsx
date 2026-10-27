@@ -78,14 +78,28 @@ function toServerConfig(form) {
   };
 }
 
-// Only sites that actually have their own login are stored (blank = use the
-// tenant-wide one).
+// Only sites that actually have their own login or their own device settings
+// are stored (blank / unticked = use the tenant-wide ones).
 function storedSiteLogins(logins) {
   return Object.fromEntries(
     Object.entries(logins)
-      .filter(([, l]) => l.user?.trim() || l.password)
-      .map(([code, l]) => [code, { user: l.user?.trim() ?? '', password: l.password ?? '' }]),
+      .filter(([, l]) => l.user?.trim() || l.password || l.settings)
+      .map(([code, l]) => [code, { user: l.user?.trim() ?? '', password: l.password ?? '', settings: l.settings ?? null }]),
   );
+}
+
+// A site's device settings (GPS, auto-sync, camera, scanning types) as the
+// form shape buildPayload() takes -- the site's own when it has them,
+// otherwise the tenant-wide ones.
+function siteDeviceForm(form, settings) {
+  if (!settings) return form;
+  return {
+    ...form,
+    gpsEnabled: settings.gps_enabled,
+    autoSyncOnEndRoute: settings.auto_sync_on_end_route,
+    cameraEnabled: settings.camera_enabled,
+    scanningTypes: settings.scanning_types,
+  };
 }
 
 function fromServerConfig(cfg) {
@@ -278,7 +292,7 @@ export default function DeviceSetupCode() {
         const main = await qr(JSON.stringify(buildPayload(form)));
         const entries = await Promise.all(sites.map(async s => {
           const login = siteLogins[s.site_code] || {};
-          const payload = buildPayload({ ...form, user: login.user?.trim() || form.user, password: login.password || form.password });
+          const payload = buildPayload({ ...siteDeviceForm(form, login.settings), user: login.user?.trim() || form.user, password: login.password || form.password });
           return [s.site_code, await qr(JSON.stringify(payload))];
         }));
         if (!cancelled) { setQrDataUrl(main); setSiteQrs(Object.fromEntries(entries)); }
@@ -366,6 +380,27 @@ export default function DeviceSetupCode() {
     setSiteStatus('idle');
   }
 
+  // Ticking "custom settings" copies the tenant's current values in as the
+  // starting point; unticking drops the override (back to the tenant's).
+  function toggleSiteCustom(code, on) {
+    updateSiteLogin(code, 'settings', on ? {
+      gps_enabled: form.gpsEnabled,
+      auto_sync_on_end_route: form.autoSyncOnEndRoute,
+      camera_enabled: form.cameraEnabled,
+      scanning_types: [...form.scanningTypes],
+    } : null);
+  }
+
+  function updateSiteSetting(code, key, value) {
+    setSiteLogins(prev => ({ ...prev, [code]: { ...prev[code], settings: { ...prev[code].settings, [key]: value } } }));
+    setSiteStatus('idle');
+  }
+
+  function toggleSiteScanningType(code, value) {
+    const current = siteLogins[code]?.settings?.scanning_types ?? [];
+    updateSiteSetting(code, 'scanning_types', current.includes(value) ? current.filter(v => v !== value) : [...current, value]);
+  }
+
   // The codes themselves are built automatically (see the effect above);
   // this is the explicit "save now" for the per-site logins.
   function saveSiteLogins() {
@@ -447,6 +482,14 @@ export default function DeviceSetupCode() {
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Password</label>
             <input type="password" className={styles.formInput} value={form.password} onChange={e => updateField('password', e.target.value)} placeholder="••••••••" />
+            {sites.length > 1 && (
+              <p className={styles.formHint}>
+                This is the default login. To give a site its own FTP login,{' '}
+                <a href="#site-setup-codes" onClick={e => { e.preventDefault(); document.getElementById('site-setup-codes')?.scrollIntoView({ behavior: 'smooth' }); }}>
+                  set it per site below ↓
+                </a>
+              </p>
+            )}
           </div>
           <div className={styles.formRow}>
             <label className={styles.formLabel}>Upload Path</label>
@@ -520,7 +563,7 @@ export default function DeviceSetupCode() {
         </div>
       </div>
 
-      <div className={styles.siteSection}>
+      <div className={styles.siteSection} id="site-setup-codes">
         <h2 className={`${styles.heading} ${styles.siteHeading}`} style={{ marginTop: 32 }}>Site Setup Codes</h2>
         <p className={`${styles.subheading} ${styles.noPrint}`}>
           One code per site, to load that site on a device: it carries the connection settings above with the site's own FTP login
@@ -549,6 +592,35 @@ export default function DeviceSetupCode() {
                   <input type="password" className={styles.formInput} style={{ marginBottom: 8, width: '100%' }}
                     value={login.password ?? ''} placeholder="FTP password (blank = tenant password)"
                     onChange={e => updateSiteLogin(s.site_code, 'password', e.target.value)} />
+                  <label className={styles.toggleLabel} style={{ marginBottom: 4 }}>
+                    <input type="checkbox" checked={!!login.settings} onChange={e => toggleSiteCustom(s.site_code, e.target.checked)} />
+                    Custom camera / scanning settings
+                  </label>
+                  {login.settings ? (
+                    <div className={styles.siteSettings}>
+                      <label className={styles.toggleLabel}>
+                        <input type="checkbox" checked={login.settings.gps_enabled} onChange={e => updateSiteSetting(s.site_code, 'gps_enabled', e.target.checked)} />
+                        GPS Checkpoint Tagging
+                      </label>
+                      <label className={styles.toggleLabel}>
+                        <input type="checkbox" checked={login.settings.auto_sync_on_end_route} onChange={e => updateSiteSetting(s.site_code, 'auto_sync_on_end_route', e.target.checked)} />
+                        Auto-Sync at End of Route
+                      </label>
+                      <label className={styles.toggleLabel}>
+                        <input type="checkbox" checked={login.settings.camera_enabled} onChange={e => updateSiteSetting(s.site_code, 'camera_enabled', e.target.checked)} />
+                        Enable Camera
+                      </label>
+                      <div className={styles.formHint} style={{ marginTop: 6 }}>Scanning type</div>
+                      {SCANNING_TYPES.map(({ value, label }) => (
+                        <label className={styles.toggleLabel} key={value}>
+                          <input type="checkbox" checked={login.settings.scanning_types.includes(value)} onChange={() => toggleSiteScanningType(s.site_code, value)} />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.formHint} style={{ marginBottom: 6 }}>Using the tenant-wide settings above.</div>
+                  )}
                 </div>
                 {qr ? (
                   <>
