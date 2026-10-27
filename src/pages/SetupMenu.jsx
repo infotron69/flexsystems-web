@@ -59,6 +59,10 @@ const USER_SETUP_ITEM = { label: 'User Setup', sub: 'Login accounts and company 
 // Issuing an API key grants unrestricted read access to this tenant's
 // patrol/configuration data to whatever external system holds it -- the
 // same class of admin-only action as User Setup above.
+// A customer admin's own name + report-email recipients (the flex login has
+// the full Customers & Databases screen instead). Backend: require_unrestricted.
+const MY_COMPANY_ITEM = { label: 'Company & Reports', sub: 'Your company name and who receives the report emails', to: '/setup/my-company' };
+
 const INTEGRATION_TESTER_ITEM = { label: 'Integration API Tester', sub: 'Test SCADA/SAP/Oracle-style API access, manage API keys', to: '/setup/integration-tester' };
 
 // A test patrol writes real transaction rows (createTransaction) that show
@@ -81,7 +85,7 @@ export default function SetupMenu() {
   const isFlexTenant = localStorage.getItem('tenant') === 'flex';
   const items = useMemo(() => {
     let list = isFlexTenant && showAdminOnly ? [...ITEMS, ADMIN_ITEM, ALL_SITES_ITEM] : ITEMS;
-    if (showAdminOnly) list = [...list.slice(0, 2), USER_SETUP_ITEM, ...list.slice(2), PDA_EMULATOR_ITEM, INTEGRATION_TESTER_ITEM, LOTO_TYPES_ITEM];
+    if (showAdminOnly) list = [...list.slice(0, 2), USER_SETUP_ITEM, ...(isFlexTenant ? [] : [MY_COMPANY_ITEM]), ...list.slice(2), PDA_EMULATOR_ITEM, INTEGRATION_TESTER_ITEM, LOTO_TYPES_ITEM];
     return list;
   }, [isFlexTenant, showAdminOnly]);
 
