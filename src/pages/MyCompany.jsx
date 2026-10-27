@@ -140,6 +140,7 @@ export default function MyCompany() {
                   </label>
                 ))}
               </div>
+              {r.user_code && <span className={styles.formHint} title="This is that user's own email — also editable on User Setup">User {r.user_code}</span>}
               <button type="button" className={styles.removeBtn} onClick={() => removeRecipient(i)} aria-label="Remove recipient">×</button>
             </div>
           ))}
