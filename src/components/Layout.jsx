@@ -35,8 +35,8 @@ export default function Layout() {
     getMe().then(setMe).catch(() => setMe(null));
   }, []);
 
-  // Offer to regenerate the PDA upload files the moment the admin leaves
-  // the Setup section with unsaved-for-PDA-purposes changes pending (any
+  // Offer to regenerate the PDA upload files the moment the admin backs out
+  // of a Setup screen with unsent-to-PDA changes pending (any
   // setup page that edits routes/points/questions/incidents/operators calls
   // markPdaFilesDirty() after a successful save) -- catches it right when
   // they're done, rather than relying on them remembering to visit Update
@@ -56,9 +56,13 @@ export default function Layout() {
   useEffect(() => {
     const prevPath = prevPathRef.current;
     prevPathRef.current = location.pathname;
+    // Offer whenever you back out of a Setup screen with unsent changes --
+    // Back, a link, or leaving Setup altogether -- not only when leaving
+    // Setup entirely. Not from or to the Update PDA Files page, which is
+    // where you'd regenerate them anyway.
     const wasInSetup = prevPath.startsWith('/setup');
-    const isInSetup = location.pathname.startsWith('/setup');
-    if (wasInSetup && !isInSetup && dirty) {
+    const involvesPdaPage = prevPath.startsWith('/setup/pda') || location.pathname.startsWith('/setup/pda');
+    if (wasInSetup && !involvesPdaPage && prevPath !== location.pathname && dirty) {
       setShowPdaOffer(true);
       setPdaResult(null);
     }
