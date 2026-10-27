@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { getDeviceSetupConfig, updateDeviceSetupConfig, getSites } from '../api/client';
+import { getDeviceSetupConfig, updateDeviceSetupConfig, getSites, getPdaSites, createCombinedGroup, deleteCombinedGroup } from '../api/client';
 import styles from './DeviceSetupCode.module.css';
 
 // Mirrors exactly the shape FlexPatrol Mobile's UPDATE_SETTINGS action (and
@@ -158,6 +158,10 @@ function downloadLabeledQr(qrDataUrl, label, filename) {
   img.src = qrDataUrl;
 }
 
+// siteLogins / siteQrs key for a combined-sites group (a site code is never
+// prefixed like this).
+const groupKey = name => `group:${name}`;
+
 function buildPayload(form) {
   // The app only distinguishes 'camera' (its own scan screen) from 'wedge'
   // (an external scanner types into the same ready-and-waiting field a
@@ -209,6 +213,14 @@ export default function DeviceSetupCode() {
   const [sites, setSites] = useState([]);
   const [siteLogins, setSiteLogins] = useState({});
   const [siteQrs, setSiteQrs] = useState({});
+  // Combined sites: several sites served from ONE folder, so one device (one
+  // FTP login, one code) carries all of them. Their login/settings live in
+  // siteLogins under "group:<name>", their codes in siteQrs under the same key.
+  const [groups, setGroups] = useState([]);
+  const [newGroup, setNewGroup] = useState({ name: '', codes: [] });
+  const [groupErr, setGroupErr] = useState(null);
+  const [groupMsg, setGroupMsg] = useState(null);
+  const [groupBusy, setGroupBusy] = useState(false);
   const [siteStatus, setSiteStatus] = useState('idle'); // idle | saving | saved | error
   const [printSites, setPrintSites] = useState(false);
   // Set once the saved settings have loaded; gates auto-save (see below).
@@ -290,10 +302,11 @@ export default function DeviceSetupCode() {
       try {
         const qr = text => QRCode.toDataURL(text, { width: 720, margin: 2 });
         const main = await qr(JSON.stringify(buildPayload(form)));
-        const entries = await Promise.all(sites.map(async s => {
-          const login = siteLogins[s.site_code] || {};
+        const keys = [...sites.map(s => s.site_code), ...groups.map(g => groupKey(g.name))];
+        const entries = await Promise.all(keys.map(async key => {
+          const login = siteLogins[key] || {};
           const payload = buildPayload({ ...siteDeviceForm(form, login.settings), user: login.user?.trim() || form.user, password: login.password || form.password });
-          return [s.site_code, await qr(JSON.stringify(payload))];
+          return [key, await qr(JSON.stringify(payload))];
         }));
         if (!cancelled) { setQrDataUrl(main); setSiteQrs(Object.fromEntries(entries)); }
       } catch (ex) {
@@ -301,7 +314,7 @@ export default function DeviceSetupCode() {
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [form, sites, siteLogins]);
+  }, [form, sites, groups, siteLogins]);
 
   // Keeps the form's values across leaving/returning to this page (and a
   // full reload) instead of resetting to the hardcoded demo defaults every
@@ -375,6 +388,51 @@ export default function DeviceSetupCode() {
       .catch(() => {});
   }, []);
 
+  function loadGroups() {
+    return getPdaSites()
+      .then(r => setGroups(r.sites.filter(g => g.combined)))
+      .catch(() => {});
+  }
+
+  useEffect(() => { loadGroups(); }, []);
+
+  function toggleNewGroupSite(code) {
+    setNewGroup(prev => ({
+      ...prev,
+      codes: prev.codes.includes(code) ? prev.codes.filter(c => c !== code) : [...prev.codes, code],
+    }));
+    setGroupMsg(null);
+  }
+
+  async function createGroup() {
+    setGroupErr(null);
+    setGroupMsg(null);
+    setGroupBusy(true);
+    try {
+      const res = await createCombinedGroup(newGroup.name.trim(), newGroup.codes);
+      await loadGroups();
+      setNewGroup({ name: '', codes: [] });
+      setGroupMsg(`Created. PDA files were generated into ${res.output_dir}\\upload — give the device's FTP login that folder as its home.`);
+    } catch (ex) {
+      setGroupErr(ex.response?.data?.detail ?? 'Could not create the combined sites');
+    } finally {
+      setGroupBusy(false);
+    }
+  }
+
+  async function removeGroup(g) {
+    if (!confirm(`Remove "${g.name}"? Devices using it stop getting updates. Its folder and files are left on disk.`)) return;
+    setGroupErr(null);
+    setGroupMsg(null);
+    try {
+      await deleteCombinedGroup(g.name);
+      setSiteLogins(prev => { const next = { ...prev }; delete next[groupKey(g.name)]; return next; });
+      await loadGroups();
+    } catch (ex) {
+      setGroupErr(ex.response?.data?.detail ?? 'Could not remove the combined sites');
+    }
+  }
+
   function updateSiteLogin(code, key, value) {
     setSiteLogins(prev => ({ ...prev, [code]: { user: '', password: '', ...prev[code], [key]: value } }));
     setSiteStatus('idle');
@@ -441,6 +499,70 @@ export default function DeviceSetupCode() {
     QRCode.toDataURL(payload, { width: 360, margin: 2 })
       .then(setUnlockQrDataUrl)
       .catch(ex => setUnlockErr('Could not generate QR code: ' + ex.message));
+  }
+
+  // One setup-code card: FTP login, optional device-settings override, and
+  // the QR code. `key` is the siteLogins/siteQrs key (a site code, or
+  // groupKey(name) for a combined-sites group).
+  function renderCard(key, title, sub, extra) {
+    const login = siteLogins[key] || {};
+    const qr = siteQrs[key];
+    return (
+      <div className={styles.siteCard} key={key}>
+        <div className={styles.siteCardTitle}>{title} <span className={styles.siteCardCode}>{sub}</span></div>
+        <div className={styles.noPrint}>
+          <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} style={{ marginBottom: 6, width: '100%' }}
+            value={login.user ?? ''} placeholder={`FTP username (blank = ${form.user || 'tenant login'})`}
+            onChange={e => updateSiteLogin(key, 'user', e.target.value)} />
+          <input type="password" className={styles.formInput} style={{ marginBottom: 8, width: '100%' }}
+            value={login.password ?? ''} placeholder="FTP password (blank = tenant password)"
+            onChange={e => updateSiteLogin(key, 'password', e.target.value)} />
+          <label className={styles.toggleLabel} style={{ marginBottom: 4 }}>
+            <input type="checkbox" checked={!!login.settings} onChange={e => toggleSiteCustom(key, e.target.checked)} />
+            Custom camera / scanning settings
+          </label>
+          {login.settings ? (
+            <div className={styles.siteSettings}>
+              <label className={styles.toggleLabel}>
+                <input type="checkbox" checked={login.settings.gps_enabled} onChange={e => updateSiteSetting(key, 'gps_enabled', e.target.checked)} />
+                GPS Checkpoint Tagging
+              </label>
+              <label className={styles.toggleLabel}>
+                <input type="checkbox" checked={login.settings.auto_sync_on_end_route} onChange={e => updateSiteSetting(key, 'auto_sync_on_end_route', e.target.checked)} />
+                Auto-Sync at End of Route
+              </label>
+              <label className={styles.toggleLabel}>
+                <input type="checkbox" checked={login.settings.camera_enabled} onChange={e => updateSiteSetting(key, 'camera_enabled', e.target.checked)} />
+                Enable Camera
+              </label>
+              <div className={styles.formHint} style={{ marginTop: 6 }}>Scanning type</div>
+              {SCANNING_TYPES.map(({ value, label }) => (
+                <label className={styles.toggleLabel} key={value}>
+                  <input type="checkbox" checked={login.settings.scanning_types.includes(value)} onChange={() => toggleSiteScanningType(key, value)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.formHint} style={{ marginBottom: 6 }}>Using the tenant-wide settings above.</div>
+          )}
+        </div>
+        {extra}
+        {qr ? (
+          <>
+            <img src={qr} alt={`Setup QR code for ${title}`} className={styles.siteQr} />
+            <div className={styles.siteCardLabel}>{[tenantLabel, title].filter(Boolean).join(' — ')}</div>
+            <p className={styles.printOnly}>This code contains the FTP login — keep it secure.</p>
+            <button className={`${styles.toolBtn} ${styles.noPrint}`} onClick={() =>
+              downloadLabeledQr(qr, [tenantLabel, title].filter(Boolean).join(' — '), `${localStorage.getItem('tenant') || 'tenant'}-${key}-setup-code.png`)}>
+              Save PNG
+            </button>
+          </>
+        ) : (
+          <div className={`${styles.formHint} ${styles.noPrint}`}>Building this code…</div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -579,66 +701,57 @@ export default function DeviceSetupCode() {
           {siteStatus === 'error' && <span className={styles.formErr}>Could not save the site logins.</span>}
         </div>
         <div className={styles.siteGrid}>
-          {sites.map(s => {
-            const login = siteLogins[s.site_code] || {};
-            const qr = siteQrs[s.site_code];
-            return (
-              <div className={styles.siteCard} key={s.site_code}>
-                <div className={styles.siteCardTitle}>{s.name} <span className={styles.siteCardCode}>{s.site_code}</span></div>
-                <div className={styles.noPrint}>
-                  <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} style={{ marginBottom: 6, width: '100%' }}
-                    value={login.user ?? ''} placeholder={`FTP username (blank = ${form.user || 'tenant login'})`}
-                    onChange={e => updateSiteLogin(s.site_code, 'user', e.target.value)} />
-                  <input type="password" className={styles.formInput} style={{ marginBottom: 8, width: '100%' }}
-                    value={login.password ?? ''} placeholder="FTP password (blank = tenant password)"
-                    onChange={e => updateSiteLogin(s.site_code, 'password', e.target.value)} />
-                  <label className={styles.toggleLabel} style={{ marginBottom: 4 }}>
-                    <input type="checkbox" checked={!!login.settings} onChange={e => toggleSiteCustom(s.site_code, e.target.checked)} />
-                    Custom camera / scanning settings
-                  </label>
-                  {login.settings ? (
-                    <div className={styles.siteSettings}>
-                      <label className={styles.toggleLabel}>
-                        <input type="checkbox" checked={login.settings.gps_enabled} onChange={e => updateSiteSetting(s.site_code, 'gps_enabled', e.target.checked)} />
-                        GPS Checkpoint Tagging
-                      </label>
-                      <label className={styles.toggleLabel}>
-                        <input type="checkbox" checked={login.settings.auto_sync_on_end_route} onChange={e => updateSiteSetting(s.site_code, 'auto_sync_on_end_route', e.target.checked)} />
-                        Auto-Sync at End of Route
-                      </label>
-                      <label className={styles.toggleLabel}>
-                        <input type="checkbox" checked={login.settings.camera_enabled} onChange={e => updateSiteSetting(s.site_code, 'camera_enabled', e.target.checked)} />
-                        Enable Camera
-                      </label>
-                      <div className={styles.formHint} style={{ marginTop: 6 }}>Scanning type</div>
-                      {SCANNING_TYPES.map(({ value, label }) => (
-                        <label className={styles.toggleLabel} key={value}>
-                          <input type="checkbox" checked={login.settings.scanning_types.includes(value)} onChange={() => toggleSiteScanningType(s.site_code, value)} />
-                          {label}
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.formHint} style={{ marginBottom: 6 }}>Using the tenant-wide settings above.</div>
-                  )}
-                </div>
-                {qr ? (
-                  <>
-                    <img src={qr} alt={`Setup QR code for ${s.name}`} className={styles.siteQr} />
-                    <div className={styles.siteCardLabel}>{[tenantLabel, s.name].filter(Boolean).join(' — ')}</div>
-                    <p className={styles.printOnly}>This code contains the FTP login — keep it secure.</p>
-                    <button className={`${styles.toolBtn} ${styles.noPrint}`} onClick={() =>
-                      downloadLabeledQr(qr, [tenantLabel, s.name].filter(Boolean).join(' — '), `${localStorage.getItem('tenant') || 'tenant'}-${s.site_code}-setup-code.png`)}>
-                      Save PNG
-                    </button>
-                  </>
-                ) : (
-                  <div className={`${styles.formHint} ${styles.noPrint}`}>Building this site's code…</div>
-                )}
-              </div>
+          {sites.map(s => renderCard(s.site_code, s.name, s.site_code))}
+          {sites.length === 0 && <div className={styles.formHint}>No sites to show yet.</div>}
+        </div>
+
+        <h2 className={`${styles.heading} ${styles.siteHeading}`} style={{ marginTop: 32 }}>Combined Sites</h2>
+        <p className={`${styles.subheading} ${styles.noPrint}`}>
+          Load 2 or more sites on one device: they're served from one shared folder with one FTP login, so one setup code carries them all.
+          Create the group, then give the FTP login for that folder below (the login's home folder must be the folder shown on its card).
+        </p>
+        <div className={`${styles.form} ${styles.noPrint}`} style={{ marginBottom: 16 }}>
+          {groupErr && <div className={styles.formErr}>{groupErr}</div>}
+          {groupMsg && <div className={styles.saveOkNote} style={{ marginBottom: 8 }}>{groupMsg}</div>}
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Group name</label>
+            <input className={`${styles.formInput} ${styles.caseSensitiveInput}`} value={newGroup.name} placeholder="e.g. Lines1and3"
+              onChange={e => { setNewGroup(prev => ({ ...prev, name: e.target.value.replace(/[^A-Za-z0-9_-]/g, '') })); setGroupMsg(null); }} />
+            <span className={styles.formHint}>Letters, digits, - and _ only. It also names the folder.</span>
+          </div>
+          <div className={styles.formRow}>
+            <label className={styles.formLabel}>Sites on this device</label>
+            <div className={styles.toggleGroup}>
+              {sites.map(s => (
+                <label className={styles.toggleLabel} key={s.site_code}>
+                  <input type="checkbox" checked={newGroup.codes.includes(s.site_code)} onChange={() => toggleNewGroupSite(s.site_code)} />
+                  {s.name} <span className={styles.siteCardCode}>{s.site_code}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className={styles.formActions}>
+            <button className={styles.saveBtn} onClick={createGroup} disabled={groupBusy || !newGroup.name.trim() || newGroup.codes.length < 2}>
+              {groupBusy ? 'Creating…' : 'Create Combined Sites'}
+            </button>
+            {newGroup.codes.length < 2 && <span className={styles.formHint}>Tick at least two sites.</span>}
+          </div>
+        </div>
+        <div className={styles.siteGrid}>
+          {groups.map(g => {
+            const names = g.site_codes
+              .filter(c => c !== 'Incidents1')
+              .map(c => sites.find(s => s.site_code === c)?.name ?? c);
+            return renderCard(
+              groupKey(g.name), g.name, `${names.length} sites`,
+              <div className={styles.noPrint} style={{ marginBottom: 8, textAlign: 'left' }}>
+                <div className={styles.formHint}>{names.join(' + ')}</div>
+                <div className={styles.formHint} style={{ wordBreak: 'break-all' }}>Folder: {g.output_dir}</div>
+                <button className={styles.toolBtn} style={{ marginTop: 6 }} onClick={() => removeGroup(g)}>Remove</button>
+              </div>,
             );
           })}
-          {sites.length === 0 && <div className={styles.formHint}>No sites to show yet.</div>}
+          {groups.length === 0 && <div className={`${styles.formHint} ${styles.noPrint}`}>No combined sites yet.</div>}
         </div>
       </div>
 
