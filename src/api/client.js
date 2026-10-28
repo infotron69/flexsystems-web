@@ -69,7 +69,6 @@ export const setUserPassword = (userCode, password) =>
   client.put(`/auth/users/${userCode}/password`, { password }).then(r => r.data);
 export const setUserSites    = (userCode, siteAccess) =>
   client.put(`/auth/users/${userCode}/sites`, { site_access: siteAccess }).then(r => r.data);
-export const setUserReports  = (userCode, reports) => client.put(`/auth/users/${userCode}/reports`, reports).then(r => r.data);
 export const deleteUser      =(userCode)  => client.delete(`/auth/users/${userCode}`);
 
 // ---------------------------------------------------------------------------
