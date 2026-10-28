@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  getUsers, createUser, setUserPassword, setUserSites, setUserReports, deleteUser,
+  getUsers, createUser, setUserPassword, setUserSites, deleteUser,
   getCustomers, getSites,
 } from '../api/client';
 import useCanEditSite from '../hooks/useCanEditSite';
@@ -9,15 +9,7 @@ import styles from './Users.module.css';
 
 const GLOBAL_SOP_SITE_ID = 'Incidents1'; // shared SOP config — not a real, assignable company site
 
-const emptyReports = { email: '', daily: false, monthly: false, download: false, invalid_alert: false };
-const emptyForm = { user_code: '', password: '', siteAccess: [], reports: emptyReports };
-
-const REPORT_TOGGLES = [
-  { key: 'daily', label: 'Daily' },
-  { key: 'monthly', label: 'Monthly' },
-  { key: 'download', label: 'Download' },
-  { key: 'invalid_alert', label: 'Invalid Alert' },
-];
+const emptyForm = { user_code: '', password: '', siteAccess: [] };
 
 export default function Users() {
   const { me, unrestricted } = useCanEditSite();
@@ -88,7 +80,7 @@ export default function Users() {
   function selectUser(u) {
     setSelCode(u.user_code);
     setIsNew(false);
-    setForm({ user_code: u.user_code, password: '', siteAccess: u.site_access.map(a => ({ ...a })), reports: { ...emptyReports, ...u.reports } });
+    setForm({ user_code: u.user_code, password: '', siteAccess: u.site_access.map(a => ({ ...a })) });
     setNewPassword('');
     setErr(null);
   }
@@ -141,14 +133,10 @@ export default function Users() {
           password: form.password,
           site_access: form.siteAccess,
         });
-        // Created first; the report email is a separate call (it's stored
-        // with the customer's report settings, not in the user table).
-        const withReports = form.reports.email.trim() ? await setUserReports(created.user_code, form.reports) : created;
         await load();
-        selectUser(withReports);
+        selectUser(created);
       } else {
-        await setUserSites(selCode, form.siteAccess);
-        const updated = await setUserReports(selCode, form.reports);
+        const updated = await setUserSites(selCode, form.siteAccess);
         setRows(prev => prev.map(u => u.user_code === updated.user_code ? updated : u));
         selectUser(updated);
       }
@@ -282,34 +270,6 @@ export default function Users() {
                 </div>
               )}
 
-              <div className={shared.formRow}>
-                <label className={shared.formLabel}>Email</label>
-                <input
-                  className={shared.formInput}
-                  type="email"
-                  value={form.reports.email}
-                  onChange={e => setForm(prev => ({ ...prev, reports: { ...prev.reports, email: e.target.value } }))}
-                  placeholder="optional — name@company.com"
-                />
-                {form.reports.email.trim() && (
-                  <div className={styles.passwordControls} style={{ marginTop: 6, flexWrap: 'wrap' }}>
-                    {REPORT_TOGGLES.map(rt => (
-                      <label key={rt.key} className={styles.radioLabel}>
-                        <input
-                          type="checkbox"
-                          checked={!!form.reports[rt.key]}
-                          onChange={e => setForm(prev => ({ ...prev, reports: { ...prev.reports, [rt.key]: e.target.checked } }))}
-                        />
-                        {rt.label}
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <span className={shared.qCat}>
-                  Tick the reports this person should receive by email. Daily/Monthly: scheduled reports. Download: after each PDA sync. Invalid Alert: when a sync has a Fail, Missed point, or exception.
-                </span>
-              </div>
-
               <div className={styles.accessSection}>
                 <label className={shared.formLabel}>Company Access</label>
                 <div className={styles.accessToggle}>
@@ -397,7 +357,7 @@ export default function Users() {
                   onClick={save}
                   disabled={saving || !form.user_code.trim() || (isNew && !form.password.trim())}
                 >
-                  {saving ? '…' : isNew ? 'Add' : 'Save'}
+                  {saving ? '…' : isNew ? 'Add' : 'Update Access'}
                 </button>
                 {!isNew && (
                   <button className={shared.deleteBtn} onClick={remove}>Delete</button>
