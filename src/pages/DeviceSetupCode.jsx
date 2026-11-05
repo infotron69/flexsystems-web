@@ -169,14 +169,15 @@ function buildPayload(form) {
   // actually checked - QR/NFC/Manual selected without Wedge Scanner should
   // never show a "ready for wedge scanner" prompt for hardware that isn't
   // there. Camera takes precedence when both are checked (QR also reads
-  // through the camera, so it lands here too); Enable Camera off always
-  // forces wedge regardless of what's checked above. Whether hand-typing is
-  // allowed at all is separate - see manualEntryEnabled below.
-  const barcodeInputMode = !form.cameraEnabled
-    ? 'wedge'
-    : form.scanningTypes.includes('wedge') && !form.scanningTypes.includes('camera')
-    ? 'wedge'
-    : 'camera';
+  // through the camera, so it lands here too). This is independent of
+  // Enable Camera, which only gates the per-point photo-attach button on
+  // the mobile app - a device can have that off while still scanning with
+  // the camera. Whether hand-typing is allowed at all is separate - see
+  // manualEntryEnabled below.
+  const barcodeInputMode =
+    form.scanningTypes.includes('wedge') && !form.scanningTypes.includes('camera')
+      ? 'wedge'
+      : 'camera';
   return {
     gpsEnabled: form.gpsEnabled,
     autoSyncOnEndRoute: form.autoSyncOnEndRoute,
