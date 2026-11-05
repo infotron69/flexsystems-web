@@ -186,6 +186,10 @@ function buildPayload(form) {
     // Off means the operator can't hand-type a point ID - only a scan
     // (camera, wedge hardware, or NFC) is accepted at a checkpoint.
     manualEntryEnabled: form.scanningTypes.includes('manual'),
+    // Gates the "NFC ready" hint on ClockInScreen/PatrolScreen - NFC listens
+    // passively regardless, but the hint shouldn't invite a tap on a device
+    // that wasn't set up to scan that way.
+    nfcEnabled: form.scanningTypes.includes('nfc'),
     ftpSettings: {
       // Same split as toServerConfig above: host/localHost are case-
       // insensitive hostnames/IPs, safe to normalize; user/password/the two
